@@ -110,14 +110,14 @@ void PianoPlayer::OnUpdate()
 {
     int mouseNoteSelect = 0;
     // Priority Black Notes
-    for(int note = NotesWhiteNum+NotesBlackNum-1; note > -1; --note)
+    for(int note = NotesWhiteNum + NotesBlackNum - 1; note > -1; --note)
     {
         if((Input::GetMouseDown(MouseState::MouseLeft) && mouseNoteSelect == 0) && notes[note].render->get_sprite())
         {
             Vec2 ms = Camera::ScreenToWorldPoint(Input::GetMousePointf());
-            Vec2 sz {notes[note].render->get_sprite()->rect().getWH() / 100};
-            Vec2 notePos = Vec2::Abs(notes[note].render->transform()->position() - ms - sz / 2);
-            Rectf noteCoord = {Vec2::zero, Vec2(sz) / 100};
+            Vec2 sz {notes[note].render->get_sprite()->rect().getWH() / 100.f};
+            Vec2 notePos = Vec2::Abs(notes[note].render->transform()->position() - ms + sz / 2);
+            Rectf noteCoord = {Vec2::zero, sz};
             mouseNoteSelect = static_cast<int>(Vec2::HasIntersection(notePos, noteCoord));
         }
 
