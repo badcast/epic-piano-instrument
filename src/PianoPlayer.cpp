@@ -1,146 +1,124 @@
+#include <cstring>
+
 #include "PianoWorld.h"
+
+constexpr int piano_key_layout[] {0, 1, 1, 0, 1, 1, 1};
+
+// F#
+constexpr KeyboardCode piano_key_keyboard_black_keys[] {KB_S, KB_D, KB_G, KB_H, KB_J, KB_2, KB_3, KB_5, KB_6, KB_7, KB_9, KB_0};
+
+// C#
+constexpr KeyboardCode piano_key_keyboard_white_keys[] {
+    KB_Z, KB_X, KB_C, KB_V, KB_B, KB_N, KB_M, KB_Q, KB_W, KB_E, KB_R, KB_T, KB_Y, KB_U, KB_I, KB_O, KB_P};
+
+constexpr int NotesBlackNum = 12;
+constexpr int NotesWhiteNum = 17;
+PianoNote notes[NotesWhiteNum + NotesBlackNum];
+
+void OnVolumeChange(UI::uid, float newValue)
+{
+    for(int x = 0; x < NotesWhiteNum + NotesBlackNum; ++x)
+    {
+        notes[x].source->volume(newValue);
+    }
+}
 
 void PianoPlayer::OnAwake()
 {
-    // init piano sources
     int x, y;
     char buffer[64];
-    const char ext[] = ".wav";
-
-    for(x = 0, y = 5; x < NotesNum; ++x, ++y)
-    {
-        snprintf(buffer, sizeof(buffer), "piano_C%d", y);
-        notes[x].name = buffer;
-        snprintf(buffer, sizeof(buffer), "piano_C%d-1", y);
-        notes[++x].name = buffer;
-    }
-
-    // load clips
-    for(x = 0; x < NotesNum; ++x)
-    {
-        // Add sprite
-        notes[x].render = Primitive::create_empty_game_object()->AddComponent<SpriteRenderer>();
-        //   notes[x].render->transform()->set_parent(this->transform());
-
-        // Add AudioSource and load
-        notes[x].source = this->AddComponent<AudioSource>();
-        resource_id note_wav = Resources::LoadAudioClip(std::string("./data/sounds/") + notes[x].name + ext, true);
-        notes[x].source->clip(Resources::GetAudioClipSource(note_wav));
-        notes[x].source->volume(0.3f);
-    }
+    const char ext[] = ".ogg";
 
     // load sprites
-    std::string sprite_directory {"./data/sprites/"};
-    spr_black = Primitive::create_empty_sprite2D();
-    spr_lf = Primitive::create_empty_sprite2D();
-    spr_cf = Primitive::create_empty_sprite2D();
-    spr_rf = Primitive::create_empty_sprite2D();
+    Vec2 size {0.5f, 2.f};
+    spr_black = Primitive::create_sprite2D_box(size / 2, Color::black);
+    spr_black_hover = Primitive::create_sprite2D_box(size / 2, Color::gray);
+    spr_white = Primitive::create_sprite2D_box(size - size * 0.05f, Color::white);
+    spr_white_hover = Primitive::create_sprite2D_box(size - size * 0.05f / 7, Color::lightgray);
+    std::string notesDir {"./data/sounds/"};
 
-    spr_black->set_surface(Resources::GetImageSource(Resources::LoadImage(sprite_directory + "black.png", true)));
-    spr_lf->set_surface(Resources::GetImageSource(Resources::LoadImage(sprite_directory + "lf.png", true)));
-    spr_cf->set_surface(Resources::GetImageSource(Resources::LoadImage(sprite_directory + "cf.png", true)));
-    spr_rf->set_surface(Resources::GetImageSource(Resources::LoadImage(sprite_directory + "rf.png", true)));
+    // Setting White notes
+    for(x = 0; x < 7; ++x)
+    {
+        snprintf(buffer, sizeof(buffer), "C-%d", 6 - x);
+        notes[x].name = buffer;
+        notes[x].key = piano_key_keyboard_white_keys[x];
+    }
+    for(; x < 17; ++x)
+    {
+        snprintf(buffer, sizeof(buffer), "C+%d", x - 7);
+        notes[x].name = buffer;
+        notes[x].key = piano_key_keyboard_white_keys[x];
+    }
 
-    // init key tone and layout
-#define set_layout(note) note.render->transform()->position(pos);
-    notes[x = 0].key = KB_Q;
-    notes[x].render->set_sprite(spr_lf);
-    Vec2 scale = spr_cf->size();
-    Vec2 pos = transform()->position();
+    // Setting Black notes
+    for(x = 0; x < NotesBlackNum; ++x)
+    {
+        snprintf(buffer, sizeof(buffer), "F+%d", x);
+        notes[x + NotesWhiteNum].name = buffer;
+        notes[x + NotesWhiteNum].key = piano_key_keyboard_black_keys[x];
+    }
 
-    pos.x = -scale.x * 3;
-    set_layout(notes[x]);
+    // init piano sources
+    Vec2 offset_left {size.x - size.x * NotesWhiteNum / 2 - size.x * 0.05f * NotesWhiteNum / 2, 0};
+    for(x = 0; x < sizeof(notes) / sizeof(notes[0]); ++x)
+    {
+        // Add sprite and Transform layer
+        notes[x].render = Primitive::create_empty_game_object()->AddComponent<SpriteRenderer>();
+        notes[x].render->transform()->localPosition(offset_left);
+        offset_left += Vec2::right * size.x;
 
-    x += 2;
-    notes[x].key = KB_W;
-    notes[x].render->set_sprite(spr_cf);
-    pos.x += scale.x;
-    set_layout(notes[x]);
+        // load clips
+        resource_id note_wav = Resources::LoadAudioClip(notesDir + notes[x].name + ext, true);
+        notes[x].source = this->AddComponent<AudioSource>();
+        notes[x].source->clip(Resources::GetAudioClipSource(note_wav));
+        notes[x].source->volume(1);
+    }
 
-    x += 2;
-    notes[x].key = KB_E;
-    notes[x].render->set_sprite(spr_rf);
-    pos.x += scale.x;
-    set_layout(notes[x]);
+    // write black tones
+    for(x = 0; x < NotesBlackNum; ++x)
+    {
+        notes[x + NotesWhiteNum].render->set_sprite(spr_black);
+        notes[x + NotesWhiteNum].normal = spr_black;
+        notes[x + NotesWhiteNum].hover = spr_black_hover;
+    }
 
-    x += 2;
-    notes[x].key = KB_R;
-    notes[x].render->set_sprite(spr_lf);
-    pos.x += scale.x;
-    set_layout(notes[x]);
+    // write white tones
+    for(x = 0, y = NotesWhiteNum; x < NotesWhiteNum; ++x)
+    {
+        notes[x].render->set_sprite(spr_white);
+        notes[x].normal = spr_white;
+        notes[x].hover = spr_white_hover;
 
-    x += 2;
-    notes[x].key = KB_T;
-    notes[x].render->set_sprite(spr_cf);
-    pos.x += scale.x;
-    set_layout(notes[x]);
+        // set black notes position
+        if(piano_key_layout[x % (sizeof(piano_key_layout) / sizeof(piano_key_layout[0]))])
+        {
+            offset_left = notes[x].render->transform()->position();
+            offset_left.x -= size.x / 2;
+            offset_left.y += notes[y].render->size.y / 2;
+            notes[y].render->transform()->position(offset_left);
+            notes[y].render->transform()->layer = 2;
+            ++y;
+        }
+    }
 
-    x += 2;
-    notes[x].key = KB_Y;
-    notes[x].render->set_sprite(spr_rf);
-    pos.x += scale.x;
-    set_layout(notes[x]);
-
-    // init key half-tone
-    notes[x = 1].key = KB_2;
-    notes[x].render->set_sprite(spr_black);
-    scale = spr_black->size();
-    pos.y = spr_cf->size().y / 2 - scale.y / 2;
-    pos.x = notes[0].render->transform()->position().x + 0.015;
-
-    pos.x += scale.x;
-    set_layout(notes[x]);
-
-    x += 2;
-    notes[x].key = KB_3;
-    notes[x].render->set_sprite(spr_black);
-    pos.x += scale.x * 2;
-    set_layout(notes[x]);
-
-    x += 2;
-    notes[x].key = KB_5;
-    notes[x].render->set_sprite(spr_black);
-    pos.x += scale.x * 4;
-    set_layout(notes[x]);
-
-    x += 2;
-    notes[x].key = KB_6;
-    notes[x].render->set_sprite(spr_black);
-    pos.x += scale.x;
-    set_layout(notes[x]);
-
-    x += 2;
-    notes[x].key = KB_7;
-    notes[x].render->set_sprite(spr_black);
-    pos.x += scale.x;
-    set_layout(notes[x]);
-
-    x += 2;
-    notes[x].key = KB_9;
-    notes[x].render->set_sprite(spr_black);
-    pos.x += scale.x;
-    set_layout(notes[x]);
-#undef set_layout
+    World::self()->getGUI()->PushLabel("Volume: ", Vec2Int::right * 5 + Vec2Int::up * 5);
+    World::self()->getGUI()->PushSlider(1, Vec2Int::right * 100, OnVolumeChange);
 }
 
 void PianoPlayer::OnUpdate()
 {
     int mouseNoteSelect = 0;
-    for(int note = 0; note < NotesNum; ++note)
+    // Priority Black Notes
+    for(int note = NotesWhiteNum+NotesBlackNum-1; note > -1; --note)
     {
         if((Input::GetMouseDown(MouseState::MouseLeft) && mouseNoteSelect == 0) && notes[note].render->get_sprite())
         {
             Vec2 ms = Camera::ScreenToWorldPoint(Input::GetMousePointf());
-            Vec2 notePos = Vec2::Abs(notes[note].render->transform()->position() - ms);
-            Rectf noteCoord = {Vec2::zero, Vec2(notes[note].render->get_sprite()->rect().getWH()) / 100};
-
-            if(Vec2::InArea(notePos, noteCoord))
-            {
-                GameObject *minors = Primitive::create_box2d(notes[note].render->transform()->position(), 45, Color::red);
-                minors->transform()->layer = 10;
-                destroy(minors, 1);
-                mouseNoteSelect = 1;
-            }
+            Vec2 sz {notes[note].render->get_sprite()->rect().getWH() / 100};
+            Vec2 notePos = Vec2::Abs(notes[note].render->transform()->position() - ms - sz / 2);
+            Rectf noteCoord = {Vec2::zero, Vec2(sz) / 100};
+            mouseNoteSelect = static_cast<int>(Vec2::HasIntersection(notePos, noteCoord));
         }
 
         if(Input::GetKeyDown(notes[note].key) || mouseNoteSelect == 1)
@@ -148,13 +126,22 @@ void PianoPlayer::OnUpdate()
             if(notes[note].state == false)
             {
                 notes[note].state = true;
+                notes[note].render->set_sprite(notes[note].hover);
                 notes[note].source->play();
-                mouseNoteSelect = 2;
             }
+            mouseNoteSelect = 2;
         }
-        else
+        else if(Input::GetKeyUp(notes[note].key))
         {
+
             notes[note].state = false;
+            notes[note].render->set_sprite(notes[note].normal);
         }
     }
+}
+
+void PianoPlayer::OnGizmos()
+{
+    Gizmos::draw_text_legacy(Vec2::up * 2, "Epic Piano Instrument v1.0");
+    Gizmos::draw_text_legacy((Vec2::right + Vec2::down) * 3, "Ronin Engine");
 }

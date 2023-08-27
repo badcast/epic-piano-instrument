@@ -1,15 +1,19 @@
 #include <ronin/framework.h>
 
+// #include <SoundTouch.h>
+
 using namespace RoninEngine;
 using namespace RoninEngine::Runtime;
 
 struct PianoNote
 {
-    std::string name;
     bool state;
+
+    std::string name;
     KeyboardCode key;
     AudioSource *source;
     SpriteRenderer *render;
+
     Sprite *normal;
     Sprite *hover;
 };
@@ -17,16 +21,10 @@ struct PianoNote
 class PianoPlayer : public Behaviour
 {
 public:
-    enum
-    {
-        NotesNum = 12
-    };
     Sprite *spr_black;
-    Sprite *spr_lf;
-    Sprite *spr_cf;
-    Sprite *spr_rf;
-
-    PianoNote notes[NotesNum];
+    Sprite *spr_black_hover;
+    Sprite *spr_white;
+    Sprite *spr_white_hover;
 
     PianoPlayer() : Behaviour("Piano Player")
     {
@@ -34,6 +32,7 @@ public:
 
     void OnAwake();
     void OnUpdate();
+    void OnGizmos();
 };
 
 class PianoWorld : public World

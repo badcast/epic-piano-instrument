@@ -10,17 +10,17 @@ int WinMain(void*, void*, void*, int)
 int main()
 #endif
 {
-    RoninSimulator::init();
+    RoninSimulator::Init();
 
     Resolution resolution{1024, 512};
-    RoninSimulator::show(resolution, false);
+    RoninSimulator::Show(resolution, false);
 
     PianoWorld world;
-    RoninSimulator::set_debug_mode(true);
-    RoninSimulator::load_world(&world);
-    RoninSimulator::simulate();
+    RoninSimulator::SetDebugMode(true);
+    RoninSimulator::LoadWorld(&world);
+    RoninSimulator::Simulate();
 
-    RoninSimulator::utilize();
+    RoninSimulator::Finalize();
 
     return 0;
 }
