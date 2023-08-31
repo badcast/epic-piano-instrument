@@ -19,7 +19,7 @@ void OnVolumeChange(UI::uid, float newValue)
 {
     for(int x = 0; x < NotesWhiteNum + NotesBlackNum; ++x)
     {
-        notes[x].source->volume(newValue);
+        notes[x].source->setVolume(newValue);
     }
 }
 
@@ -71,8 +71,8 @@ void PianoPlayer::OnAwake()
         // load clips
         resource_id note_wav = Resources::LoadAudioClip(notesDir + notes[x].name + ext, true);
         notes[x].source = this->AddComponent<AudioSource>();
-        notes[x].source->clip(Resources::GetAudioClipSource(note_wav));
-        notes[x].source->volume(1);
+        notes[x].source->setClip(Resources::GetAudioClipSource(note_wav));
+        notes[x].source->setVolume(1);
     }
 
     // write black tones
@@ -127,13 +127,12 @@ void PianoPlayer::OnUpdate()
             {
                 notes[note].state = true;
                 notes[note].render->set_sprite(notes[note].hover);
-                notes[note].source->play();
+                notes[note].source->Play();
             }
             mouseNoteSelect = 2;
         }
         else if(Input::GetKeyUp(notes[note].key))
         {
-
             notes[note].state = false;
             notes[note].render->set_sprite(notes[note].normal);
         }
@@ -142,6 +141,6 @@ void PianoPlayer::OnUpdate()
 
 void PianoPlayer::OnGizmos()
 {
-    Gizmos::draw_text_legacy(Vec2::up * 2, "Epic Piano Instrument v1.0");
-    Gizmos::draw_text_legacy((Vec2::right + Vec2::down) * 3, "Ronin Engine");
+    Gizmos::DrawTextLegacy(Vec2::up * 2, "Epic Piano Instrument v1.0");
+    Gizmos::DrawTextLegacy((Vec2::right + Vec2::down) * 2, "Ronin Engine");
 }
