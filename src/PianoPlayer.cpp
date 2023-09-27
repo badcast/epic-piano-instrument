@@ -143,4 +143,13 @@ void PianoPlayer::OnGizmos()
 {
     Gizmos::DrawTextLegacy(Vec2::up * 2, "Epic Piano Instrument v1.0");
     Gizmos::DrawTextLegacy((Vec2::right + Vec2::down) * 2, "Ronin Engine");
+
+    if(Input::GetMouseDown(MouseState::MouseRight))
+    {
+        Gizmos::SetColor(Color{0,0,0,100});
+        Gizmos::DrawFillRect(Vec2::zero, 10,5);
+        Gizmos::SetColor(Color::white);
+        Gizmos::DrawTextLegacy(Vec2::zero, "Reloading...");
+        RoninSimulator::ReloadWorld();
+    }
 }
