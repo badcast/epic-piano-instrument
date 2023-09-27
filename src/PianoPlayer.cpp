@@ -11,8 +11,11 @@ constexpr KeyboardCode piano_key_keyboard_black_keys[] {KB_S, KB_D, KB_G, KB_H, 
 constexpr KeyboardCode piano_key_keyboard_white_keys[] {
     KB_Z, KB_X, KB_C, KB_V, KB_B, KB_N, KB_M, KB_Q, KB_W, KB_E, KB_R, KB_T, KB_Y, KB_U, KB_I, KB_O, KB_P};
 
+
 constexpr int NotesBlackNum = 12;
 constexpr int NotesWhiteNum = 17;
+
+resource_id notes_res[NotesWhiteNum + NotesBlackNum];
 PianoNote notes[NotesWhiteNum + NotesBlackNum];
 
 void OnVolumeChange(UI::uid, float newValue)
@@ -69,7 +72,11 @@ void PianoPlayer::OnAwake()
         offset_left += Vec2::right * size.x;
 
         // load clips
-        resource_id note_wav = Resources::LoadAudioClip(notesDir + notes[x].name + ext, true);
+        resource_id note_wav;
+        if(!(note_wav = notes_res[x]))
+        {
+            note_wav = notes_res[x] = Resources::LoadAudioClip(notesDir + notes[x].name + ext, false);
+        }
         notes[x].source = this->AddComponent<AudioSource>();
         notes[x].source->setClip(Resources::GetAudioClipSource(note_wav));
         notes[x].source->setVolume(1);
@@ -146,8 +153,8 @@ void PianoPlayer::OnGizmos()
 
     if(Input::GetMouseDown(MouseState::MouseRight))
     {
-        Gizmos::SetColor(Color{0,0,0,100});
-        Gizmos::DrawFillRect(Vec2::zero, 10,5);
+        Gizmos::SetColor(Color {0, 0, 0, 100});
+        Gizmos::DrawFillRect(Vec2::zero, 10, 5);
         Gizmos::SetColor(Color::white);
         Gizmos::DrawTextLegacy(Vec2::zero, "Reloading...");
         RoninSimulator::ReloadWorld();
