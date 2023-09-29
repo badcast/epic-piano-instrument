@@ -16,7 +16,7 @@ int main()
     RoninSimulator::Show(resolution, false);
 
     PianoWorld world;
-    RoninSimulator::SetDebugMode(0);
+    RoninSimulator::SetDebugMode(1);
     RoninSimulator::LoadWorld(&world);
     RoninSimulator::Simulate();
 

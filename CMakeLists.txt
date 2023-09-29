@@ -7,8 +7,7 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 
 find_package(PkgConfig REQUIRED)
 
-set(RONIN_NO_CONFIG ON)
-add_subdirectory(RoninEngine)
+pkg_check_modules(RoninEngine REQUIRED RoninEngine)
 
 file(GLOB_RECURSE SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 
@@ -17,20 +16,44 @@ file(GLOB_RECURSE HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.hpp"
 
 add_executable(PianoInstrument ${HEADERS} ${SOURCES})
 
-target_link_libraries(PianoInstrument PUBLIC RoninEngine)
+target_include_directories(PianoInstrument PRIVATE ${RoninEngine_INCLUDE_DIRS})
+
+target_link_libraries(PianoInstrument PUBLIC ${RoninEngine_LIBRARIES})
 
 # set the executable name
 set_target_properties(PianoInstrument PROPERTIES OUTPUT_NAME
                                                  epic-piano-instrument)
 
-# create link resources "data:resources"
-file(MAKE_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
-set(_DATA_DESTINATION "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/data")
-if(NOT EXISTS "${_DATA_DESTINATION}")
-  message(STATUS "Linking data to \"${_DATA_DESTINATION}\"")
-  file(CREATE_LINK "${CMAKE_CURRENT_SOURCE_DIR}/resources/data"
-       "${_DATA_DESTINATION}" SYMBOLIC)
+get_target_property(OUTPUT_NAME PianoInstrument OUTPUT_NAME)
+
+# INSTALLS
+
+include(GNUInstallDirs)
+
+if(CMAKE_BUILD_TYPE STREQUAL "Release"
+   OR CMAKE_BUILD_TYPE STREQUAL "MinSizeRel"
+   OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+
+  set(EPIC_PIANO_DATA_DIR ${CMAKE_INSTALL_PREFIX}/share/${OUTPUT_NAME})
+
+  target_compile_definitions(PianoInstrument
+                             PUBLIC DATA_NOTES_DIR="${EPIC_PIANO_DATA_DIR}")
+
+  install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resources/data/
+          DESTINATION ${EPIC_PIANO_DATA_DIR})
+
+  install(FILES "${CMAKE_BINARY_DIR}/bin/${OUTPUT_NAME}"
+          DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")
 else()
-  message(STATUS "Symbolic link exists - not required")
+  # create link resources "data:resources"
+  file(MAKE_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+  set(_DATA_DESTINATION "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/data")
+  if(NOT EXISTS "${_DATA_DESTINATION}")
+    message(STATUS "Linking data to \"${_DATA_DESTINATION}\"")
+    file(CREATE_LINK "${CMAKE_CURRENT_SOURCE_DIR}/resources/data"
+         "${_DATA_DESTINATION}" SYMBOLIC)
+  else()
+    message(STATUS "Symbolic link exists - not required")
+  endif()
+  unset(_DATA_DESTINATION)
 endif()
-unset(_DATA_DESTINATION)

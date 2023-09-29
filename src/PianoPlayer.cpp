@@ -2,6 +2,7 @@
 
 #include "PianoWorld.h"
 
+// Black And White key layout
 constexpr int piano_key_layout[] {0, 1, 1, 0, 1, 1, 1};
 
 // F#
@@ -11,12 +12,22 @@ constexpr KeyboardCode piano_key_keyboard_black_keys[] {KB_S, KB_D, KB_G, KB_H, 
 constexpr KeyboardCode piano_key_keyboard_white_keys[] {
     KB_Z, KB_X, KB_C, KB_V, KB_B, KB_N, KB_M, KB_Q, KB_W, KB_E, KB_R, KB_T, KB_Y, KB_U, KB_I, KB_O, KB_P};
 
-
 constexpr int NotesBlackNum = 12;
 constexpr int NotesWhiteNum = 17;
 
 resource_id notes_res[NotesWhiteNum + NotesBlackNum];
 PianoNote notes[NotesWhiteNum + NotesBlackNum];
+
+std::string GetDataDir()
+{
+#ifndef DATA_NOTES_DIR
+    std::string __dataDirectory = Path::app_dir();
+    __dataDirectory += "data";
+#else
+    std::string __dataDirectory {DATA_NOTES_DIR};
+#endif
+    return __dataDirectory;
+}
 
 void OnVolumeChange(UI::uid, float newValue)
 {
@@ -38,7 +49,7 @@ void PianoPlayer::OnAwake()
     spr_black_hover = Primitive::create_sprite2D_box(size / 2, Color::gray);
     spr_white = Primitive::create_sprite2D_box(size - size * 0.05f, Color::white);
     spr_white_hover = Primitive::create_sprite2D_box(size - size * 0.05f / 7, Color::lightgray);
-    std::string notesDir {"./data/sounds/"};
+    std::string notesDir {GetDataDir() += "/sounds/"};
 
     // Setting White notes
     for(x = 0; x < 7; ++x)
@@ -85,7 +96,7 @@ void PianoPlayer::OnAwake()
     // write black tones
     for(x = 0; x < NotesBlackNum; ++x)
     {
-        notes[x + NotesWhiteNum].render->set_sprite(spr_black);
+        notes[x + NotesWhiteNum].render->setSprite(spr_black);
         notes[x + NotesWhiteNum].normal = spr_black;
         notes[x + NotesWhiteNum].hover = spr_black_hover;
     }
@@ -93,7 +104,7 @@ void PianoPlayer::OnAwake()
     // write white tones
     for(x = 0, y = NotesWhiteNum; x < NotesWhiteNum; ++x)
     {
-        notes[x].render->set_sprite(spr_white);
+        notes[x].render->setSprite(spr_white);
         notes[x].normal = spr_white;
         notes[x].hover = spr_white_hover;
 
@@ -102,9 +113,9 @@ void PianoPlayer::OnAwake()
         {
             offset_left = notes[x].render->transform()->position();
             offset_left.x -= size.x / 2;
-            offset_left.y += notes[y].render->size.y / 2;
+            offset_left.y += notes[y].render->getSize().y / 2;
             notes[y].render->transform()->position(offset_left);
-            notes[y].render->transform()->layer = 2;
+            notes[y].render->transform()->layer(2);
             ++y;
         }
     }
@@ -113,19 +124,35 @@ void PianoPlayer::OnAwake()
     World::self()->getGUI()->PushSlider(1, Vec2Int::right * 100, OnVolumeChange);
 }
 
+struct
+{
+    bool touched;
+    Rectf noteArea;
+} note_mouse_touch;
+
 void PianoPlayer::OnUpdate()
 {
     int mouseNoteSelect = 0;
+    note_mouse_touch.touched = false;
     // Priority Black Notes
     for(int note = NotesWhiteNum + NotesBlackNum - 1; note > -1; --note)
     {
-        if((Input::GetMouseDown(MouseState::MouseLeft) && mouseNoteSelect == 0) && notes[note].render->get_sprite())
+        if((Input::GetMouseDown(MouseState::MouseLeft) && mouseNoteSelect == 0) && notes[note].render->getSprite())
         {
             Vec2 ms = Camera::ScreenToWorldPoint(Input::GetMousePointf());
-            Vec2 sz {notes[note].render->get_sprite()->rect().getWH() / 100.f};
-            Vec2 notePos = Vec2::Abs(notes[note].render->transform()->position() - ms + sz / 2);
-            Rectf noteCoord = {Vec2::zero, sz};
-            mouseNoteSelect = static_cast<int>(Vec2::HasIntersection(notePos, noteCoord));
+
+            SpriteRenderer *noteRenderer = notes[note].render;
+
+            Vec2 notePos = noteRenderer->transform()->position();
+            Rectf noteArea = {notePos - noteRenderer->getSprite()->size() / 2, noteRenderer->getSprite()->size()};
+            mouseNoteSelect = static_cast<int>(Vec2::HasIntersection(ms, noteArea));
+            if(mouseNoteSelect)
+            {
+                noteArea.x += (noteRenderer->getSprite()->size() / 2 ) .x;
+                noteArea.y += (noteRenderer->getSprite()->size() / 2 ) .y;
+                note_mouse_touch.noteArea = noteArea;
+                note_mouse_touch.touched = true;
+            }
         }
 
         if(Input::GetKeyDown(notes[note].key) || mouseNoteSelect == 1)
@@ -133,7 +160,7 @@ void PianoPlayer::OnUpdate()
             if(notes[note].state == false)
             {
                 notes[note].state = true;
-                notes[note].render->set_sprite(notes[note].hover);
+                notes[note].render->setSprite(notes[note].hover);
                 notes[note].source->Play();
             }
             mouseNoteSelect = 2;
@@ -141,7 +168,7 @@ void PianoPlayer::OnUpdate()
         else if(Input::GetKeyUp(notes[note].key))
         {
             notes[note].state = false;
-            notes[note].render->set_sprite(notes[note].normal);
+            notes[note].render->setSprite(notes[note].normal);
         }
     }
 }
@@ -158,5 +185,10 @@ void PianoPlayer::OnGizmos()
         Gizmos::SetColor(Color::white);
         Gizmos::DrawTextLegacy(Vec2::zero, "Reloading...");
         RoninSimulator::ReloadWorld();
+    }
+    if(note_mouse_touch.touched)
+    {
+        Gizmos::SetColor(Color::white);
+        Gizmos::DrawRectangle(note_mouse_touch.noteArea.getXY(), note_mouse_touch.noteArea.w, note_mouse_touch.noteArea.h);
     }
 }
