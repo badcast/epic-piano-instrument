@@ -124,38 +124,28 @@ void PianoPlayer::OnAwake()
     World::self()->GetGUI()->PushSlider(1, Vec2Int::right * 100, OnVolumeChange);
 }
 
-struct
-{
-    bool touched;
-    Rectf noteArea;
-} note_mouse_touch;
+int mousetouched;
 
 void PianoPlayer::OnUpdate()
 {
-    int mouseNoteSelect = 0;
-    note_mouse_touch.touched = false;
-    // Priority Black Notes
+    Vec2 ms = Camera::ScreenToWorldPoint(Input::GetMousePointf());
+
+    mousetouched = -1;
     for(int note = NotesWhiteNum + NotesBlackNum - 1; note > -1; --note)
     {
-        if((Input::GetMouseDown(MouseState::MouseLeft) && mouseNoteSelect == 0) && notes[note].render->getSprite())
+        if((Input::GetMouseDown(MouseState::MouseLeft) && mousetouched == -1))
         {
-            Vec2 ms = Camera::ScreenToWorldPoint(Input::GetMousePointf());
-
             SpriteRenderer *noteRenderer = notes[note].render;
 
             Vec2 notePos = noteRenderer->transform()->position();
             Rectf noteArea = {notePos - noteRenderer->getSprite()->size() / 2, noteRenderer->getSprite()->size()};
-            mouseNoteSelect = static_cast<int>(Vec2::HasIntersection(ms, noteArea));
-            if(mouseNoteSelect)
+            if(Vec2::HasIntersection(ms, noteArea))
             {
-                noteArea.x += (noteRenderer->getSprite()->size() / 2).x;
-                noteArea.y += (noteRenderer->getSprite()->size() / 2).y;
-                note_mouse_touch.noteArea = noteArea;
-                note_mouse_touch.touched = true;
+                mousetouched = note;
             }
         }
 
-        if(Input::GetKeyDown(notes[note].key) || mouseNoteSelect == 1)
+        if(Input::GetKeyDown(notes[note].key) || mousetouched == note)
         {
             if(notes[note].state == false)
             {
@@ -163,7 +153,6 @@ void PianoPlayer::OnUpdate()
                 notes[note].render->setSprite(notes[note].hover);
                 notes[note].source->Play();
             }
-            mouseNoteSelect = 2;
         }
         else if(Input::GetKeyUp(notes[note].key))
         {
@@ -186,9 +175,13 @@ void PianoPlayer::OnGizmos()
         Gizmos::DrawTextLegacy(Vec2::zero, "Reloading...");
         RoninSimulator::ReloadWorld();
     }
-    if(note_mouse_touch.touched)
+    if(mousetouched != -1)
     {
         Gizmos::SetColor(Color::white);
-        Gizmos::DrawRectangle(note_mouse_touch.noteArea.getXY(), note_mouse_touch.noteArea.w, note_mouse_touch.noteArea.h);
+        Rect area;
+        Rectf noteArea = {
+            notes[mousetouched].render->transform()->position() ,
+            notes[mousetouched].render->getSprite()->size()};
+        Gizmos::DrawRectangle(noteArea.getXY(), noteArea.w, noteArea.h);
     }
 }
