@@ -45,10 +45,10 @@ void PianoPlayer::OnAwake()
 
     // load sprites
     Vec2 size {0.5f, 2.f};
-    spr_black = Primitive::create_sprite2D_box(size / 2, Color::black);
-    spr_black_hover = Primitive::create_sprite2D_box(size / 2, Color::gray);
-    spr_white = Primitive::create_sprite2D_box(size - size * 0.05f, Color::white);
-    spr_white_hover = Primitive::create_sprite2D_box(size - size * 0.05f / 7, Color::lightgray);
+    spr_black = Primitive::CreateSpriteRectangle(true, size / 2, Color::black);
+    spr_black_hover = Primitive::CreateSpriteRectangle(true, size / 2, Color::gray);
+    spr_white = Primitive::CreateSpriteRectangle(true, size - size * 0.05f, Color::white);
+    spr_white_hover = Primitive::CreateSpriteRectangle(true, size - size * 0.05f / 7, Color::lightgray);
     std::string notesDir {GetDataDir() += "/sounds/"};
 
     // Setting White notes
@@ -78,7 +78,7 @@ void PianoPlayer::OnAwake()
     for(x = 0; x < sizeof(notes) / sizeof(notes[0]); ++x)
     {
         // Add sprite and Transform layer
-        notes[x].render = Primitive::create_empty_game_object()->AddComponent<SpriteRenderer>();
+        notes[x].render = Primitive::CreateEmptyGameObject()->AddComponent<SpriteRenderer>();
         notes[x].render->transform()->localPosition(offset_left);
         offset_left += Vec2::right * size.x;
 
@@ -120,8 +120,8 @@ void PianoPlayer::OnAwake()
         }
     }
 
-    World::self()->getGUI()->PushLabel("Volume: ", Vec2Int::right * 5 + Vec2Int::up * 5);
-    World::self()->getGUI()->PushSlider(1, Vec2Int::right * 100, OnVolumeChange);
+    World::self()->GetGUI()->PushLabel("Volume:", Vec2Int::right * 5 + Vec2Int::up * 5);
+    World::self()->GetGUI()->PushSlider(1, Vec2Int::right * 100, OnVolumeChange);
 }
 
 struct
@@ -148,8 +148,8 @@ void PianoPlayer::OnUpdate()
             mouseNoteSelect = static_cast<int>(Vec2::HasIntersection(ms, noteArea));
             if(mouseNoteSelect)
             {
-                noteArea.x += (noteRenderer->getSprite()->size() / 2 ) .x;
-                noteArea.y += (noteRenderer->getSprite()->size() / 2 ) .y;
+                noteArea.x += (noteRenderer->getSprite()->size() / 2).x;
+                noteArea.y += (noteRenderer->getSprite()->size() / 2).y;
                 note_mouse_touch.noteArea = noteArea;
                 note_mouse_touch.touched = true;
             }
