@@ -15,7 +15,7 @@ constexpr KeyboardCode piano_key_keyboard_white_keys[] {
 constexpr int NotesBlackNum = 12;
 constexpr int NotesWhiteNum = 17;
 
-resource_id notes_res[NotesWhiteNum + NotesBlackNum];
+ResId notes_res[NotesWhiteNum + NotesBlackNum];
 PianoNote notes[NotesWhiteNum + NotesBlackNum];
 
 std::string GetDataDir()
@@ -27,6 +27,31 @@ std::string GetDataDir()
     std::string __dataDirectory {DATA_NOTES_DIR};
 #endif
     return __dataDirectory;
+}
+
+void MakeParticleUpNote(int note){
+    Vec2 pos = notes[note].render->transform()->position();
+
+    ParticleSystem * p = Primitive::CreateEmptyGameObject(pos + Vec2::up/2)->AddComponent<ParticleSystem>();
+
+    p->loop = false;
+    p->speed = 4;
+    p->rotate = false;
+
+    p->setSource(Sprite::CreateWhiteSprite());
+    p->setLimit(1);
+    p->destroyAfter = true;
+    p->setInterpolates(1, 0.3, 0.1);
+    p->setSizes(Vec2::half/4 * Random::Value(), Vec2::half/2, Vec2::one);
+    p->setColors(Color::red, Color::blue, Color::yellow);
+}
+
+void OnTransparencyChange(UI::uid, float newValue)
+{
+    for(int x = 0; x < NotesWhiteNum + NotesBlackNum; ++x)
+    {
+        notes[x].render->setColor(Color(Color::white, newValue * 255));
+    }
 }
 
 void OnVolumeChange(UI::uid, float newValue)
@@ -83,7 +108,7 @@ void PianoPlayer::OnAwake()
         offset_left += Vec2::right * size.x;
 
         // load clips
-        resource_id note_wav;
+        ResId note_wav;
         if(!(note_wav = notes_res[x]))
         {
             note_wav = notes_res[x] = Resources::LoadAudioClip(notesDir + notes[x].name + ext, false);
@@ -120,8 +145,11 @@ void PianoPlayer::OnAwake()
         }
     }
 
-    World::self()->GetGUI()->PushLabel("Volume:", Vec2Int::right * 5 + Vec2Int::up * 5);
+    World::self()->GetGUI()->PushLabel("Volume:", Vec2Int::right * 25 + Vec2Int::up * 15);
     World::self()->GetGUI()->PushSlider(1, Vec2Int::right * 100, OnVolumeChange);
+
+    World::self()->GetGUI()->PushLabel("Transparency:", Vec2Int::right * 46 + Vec2Int::up * 30);
+    World::self()->GetGUI()->PushSlider(1, {100, 20}, OnTransparencyChange);
 }
 
 int mousetouched;
@@ -133,7 +161,7 @@ void PianoPlayer::OnUpdate()
     mousetouched = -1;
     for(int note = NotesWhiteNum + NotesBlackNum - 1; note > -1; --note)
     {
-        if((Input::GetMouseDown(MouseState::MouseLeft) && mousetouched == -1))
+        if((Input::GetMouseDown(MouseButton::MouseLeft) && mousetouched == -1))
         {
             SpriteRenderer *noteRenderer = notes[note].render;
 
@@ -153,6 +181,7 @@ void PianoPlayer::OnUpdate()
                 notes[note].render->setSprite(notes[note].hover);
                 notes[note].source->Play();
             }
+            MakeParticleUpNote(note);
         }
         else if(Input::GetKeyUp(notes[note].key))
         {
@@ -165,9 +194,9 @@ void PianoPlayer::OnUpdate()
 void PianoPlayer::OnGizmos()
 {
     Gizmos::DrawTextLegacy(Vec2::up * 2, "Epic Piano Instrument v1.0");
-    Gizmos::DrawTextLegacy((Vec2::right + Vec2::down) * 2, "Ronin Engine");
+    Gizmos::DrawTextLegacy((Vec2::right + Vec2::down) * 2, "Execuiting on Ronin Engine");
 
-    if(Input::GetMouseDown(MouseState::MouseRight))
+    if(Input::GetMouseDown(MouseButton::MouseRight))
     {
         Gizmos::SetColor(Color {0, 0, 0, 100});
         Gizmos::DrawFillRect(Vec2::zero, 10, 5);
@@ -179,9 +208,7 @@ void PianoPlayer::OnGizmos()
     {
         Gizmos::SetColor(Color::white);
         Rect area;
-        Rectf noteArea = {
-            notes[mousetouched].render->transform()->position() ,
-            notes[mousetouched].render->getSprite()->size()};
-        Gizmos::DrawRectangle(noteArea.getXY(), noteArea.w, noteArea.h);
+        Rectf noteArea = {notes[mousetouched].render->transform()->position(), notes[mousetouched].render->getSprite()->size()};
+        Gizmos::DrawRectangle(noteArea.GetXY(), noteArea.w, noteArea.h);
     }
 }

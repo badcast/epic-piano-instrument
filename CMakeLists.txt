@@ -5,6 +5,8 @@ project(PianoInstrument LANGUAGES CXX)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 
+option(USE_SYSRONIN "Use system installed ronin engine" ON)
+
 find_package(PkgConfig REQUIRED)
 
 pkg_check_modules(RoninEngine REQUIRED RoninEngine)
@@ -14,11 +16,22 @@ file(GLOB_RECURSE SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 file(GLOB_RECURSE HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.hpp"
      "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h")
 
-add_executable(PianoInstrument ${HEADERS} ${SOURCES})
+if(WIN32)
+  add_executable(PianoInstrument WIN32 ${HEADERS} ${SOURCES})
+else()
+  add_executable(PianoInstrument ${HEADERS} ${SOURCES})
+endif()
 
-target_include_directories(PianoInstrument PRIVATE ${RoninEngine_INCLUDE_DIRS})
-
-target_link_libraries(PianoInstrument PUBLIC ${RoninEngine_LIBRARIES})
+if(NOT USE_SYSRONIN)
+  set(RONIN_NO_CONFIG ON)
+  add_subdirectory(RoninEngine)
+  target_link_libraries(PianoInstrument PRIVATE RoninEngine)
+else()
+  pkg_check_modules(RoninEngine REQUIRED RoninEngine)
+  target_include_directories(PianoInstrument
+                             PRIVATE ${RoninEngine_INCLUDE_DIRS})
+  target_link_libraries(PianoInstrument PRIVATE ${RoninEngine_LIBRARIES})
+endif()
 
 # set the executable name
 set_target_properties(PianoInstrument PROPERTIES OUTPUT_NAME
