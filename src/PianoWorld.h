@@ -20,6 +20,12 @@ struct PianoNote
 
 class PianoPlayer : public Behaviour
 {
+protected:
+    std::vector<std::pair<float,std::vector<int>>> records {};
+    int track;
+    float startPlayback;
+    float curPlayback;
+
 public:
     Sprite *spr_black;
     Sprite *spr_black_hover;
@@ -33,6 +39,14 @@ public:
     void OnAwake();
     void OnUpdate();
     void OnGizmos();
+
+    bool recording() const;
+    bool playing() const;
+    void beginRecord();
+    void endRecord();
+    bool playRecord();
+    void stopPlay();
+    void clearRecord();
 };
 
 class PianoWorld : public World
