@@ -29,7 +29,7 @@ Welcome to "Epic Piano" - a virtual instrument based on the RoninEngine framewor
 
 ## Authors
 
-- Full Name ([GitHub Profile](link))
+- Full Name ([badcast](https://github.com/badcast))
 
 ## License
 
@@ -37,6 +37,5 @@ This project is licensed under see the [`LICENSE`](LICENSE) file for details.
 
 ## Contact Us
 
-If you have any questions, suggestions, or simply want to share your creative ideas, feel free to [contact us](contact link).
+If you have any questions, suggestions, or simply want to share your creative ideas, feel free to badcast.
 
-**Note:** This is just a sample README file. Please replace the relevant sections with actual information about your project.
