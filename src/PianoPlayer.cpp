@@ -20,7 +20,7 @@ int mousetouched;
 ResId notes_res[NotesWhiteNum + NotesBlackNum];
 PianoNote notes[NotesWhiteNum + NotesBlackNum];
 
-std::vector<int> __stack_records__ {};
+std::set<int> __stack_records__ {};
 
 std::string GetDataDir()
 {
@@ -37,18 +37,19 @@ void MakeParticleUpNote(int note)
 {
     Vec2 pos = notes[note].render->transform()->position();
 
-    ParticleSystem *p = Primitive::CreateEmptyGameObject(pos + Vec2::up / 2)->AddComponent<ParticleSystem>();
+    ParticleSystem *p = Primitive::CreateEmptyGameObject( { pos.x, notes[0].render->transform()->position().y + notes[0].render->getSize().y })->AddComponent<ParticleSystem>();
 
     p->loop = false;
-    p->speed = 4;
+    p->speed = 3;
     p->rotate = false;
     p->destroyAfter = true;
 
     p->setSource(Sprite::CreateWhiteSprite());
     p->setLimit(1);
-    p->setInterpolates(1, 0.3, 0.1);
-    p->setSizes(Vec2::half / 4 * Random::Value(), Vec2::half / 3, Vec2::one / 2);
-    p->setColors(Color::red, Color::blue, Color::yellow);
+    p->setInterpolates(1.3, 0.3, 0.1);
+    p->setSize(Vec2::half / 6);
+    p->setColor(Color(255,100,124));
+
 }
 
 void OnTransparencyChange(UI::uid, float newValue)
@@ -108,11 +109,19 @@ void PianoPlayer::OnAwake()
     std::string notesDir {GetDataDir() += "/sounds/"};
 
     // load sprites
-    Vec2 size {0.5f, 2.f};
-    spr_black = Primitive::CreateSpriteRectangle(true, size / 2, Color::black);
-    spr_black_hover = Primitive::CreateSpriteRectangle(true, size / 2, Color::gray);
-    spr_white = Primitive::CreateSpriteRectangle(true, size - size * 0.05f, Color::white);
-    spr_white_hover = Primitive::CreateSpriteRectangle(true, size - size * 0.05f / 7, Color::lightgray);
+    Vec2 vector1 {0.5f, 2.f};
+    Vec2 pianoOffset = {0, -2};
+
+    spr_black = Primitive::CreateSpriteRectangle(true, vector1 / 2, Color::black);
+    spr_black_hover = Primitive::CreateSpriteRectangle(true, vector1 / 2, Color::gray);
+    spr_white = Primitive::CreateSpriteRectangle(true, vector1 - vector1 * 0.05f, Color::white);
+    spr_white_hover = Primitive::CreateSpriteRectangle(true, vector1 - vector1 * 0.05f / 7, Color::lightgray);
+
+    if((visual_background = Primitive::CreateSpriteFrom(
+            Resources::GetImageSource(Resources::LoadImage(GetDataDir() + "/layer.png", true)), true)) == nullptr)
+    {
+        RoninSimulator::Log("Visual sprite is no loaded");
+    }
 
     __stack_records__.clear();
     clearRecord();
@@ -140,13 +149,13 @@ void PianoPlayer::OnAwake()
     }
 
     // init piano sources
-    Vec2 offset_left {size.x - size.x * NotesWhiteNum / 2 - size.x * 0.05f * NotesWhiteNum / 2, 0};
+    Vec2 offset_left {vector1.x - vector1.x * NotesWhiteNum / 2 - vector1.x * 0.05f * NotesWhiteNum / 2 + pianoOffset.x, pianoOffset.y};
     for(x = 0; x < sizeof(notes) / sizeof(notes[0]); ++x)
     {
         // Add sprite and Transform layer
         notes[x].render = Primitive::CreateEmptyGameObject()->AddComponent<SpriteRenderer>();
         notes[x].render->transform()->localPosition(offset_left);
-        offset_left += Vec2::right * size.x;
+        offset_left += Vec2::right * vector1.x;
 
         // load clips
         ResId note_wav;
@@ -178,7 +187,7 @@ void PianoPlayer::OnAwake()
         if(piano_key_layout[x % (sizeof(piano_key_layout) / sizeof(piano_key_layout[0]))])
         {
             offset_left = notes[x].render->transform()->position();
-            offset_left.x -= size.x / 2;
+            offset_left.x -= vector1.x / 2;
             offset_left.y += notes[y].render->getSize().y / 2;
             notes[y].render->transform()->position(offset_left);
             notes[y].render->transform()->layer(2);
@@ -186,6 +195,18 @@ void PianoPlayer::OnAwake()
         }
     }
 
+    // Generate Visual Layer
+    SpriteRenderer *visualObject = Primitive::CreateEmptyGameObject()->AddComponent<SpriteRenderer>();
+    visualObject->setSprite(visual_background);
+    visualObject->setColor(Color(Color::white, 128));
+    visualObject->setSize({1, 2});
+    vector1 = notes[0].render->transform()->position();
+    vector1.x += visual_background->size().x / 2 - notes[0].render->getSize().x / 2 + 0.25f;
+    vector1.y += visual_background->size().y + notes[0].render->getSize().y - 0.1f;
+
+    visualObject->transform()->position(vector1);
+
+    // Generate GUI
     World::self()->GetGUI()->PushLabel("Volume:", Vec2Int::right * 25 + Vec2Int::up * 15);
     World::self()->GetGUI()->PushSlider(1, Vec2Int::right * 100, OnVolumeChange);
 
@@ -206,6 +227,26 @@ void PianoPlayer::OnUpdate()
 
     mousetouched = -1;
 
+    // Auto playing
+    if(playing() && records.size() > 2)
+    {
+        float off = TimeEngine::time() - startPlayback;
+
+        if(off >= curPlayback)
+        {
+            // select the next tracks
+            ++track;
+
+            // Are looping
+            if(track == records.size() - 1)
+            {
+                // Replay
+                playRecord();
+            }
+            curPlayback = records.at(track).first;
+        }
+    }
+
     for(int note = NotesWhiteNum + NotesBlackNum - 1, playRecNote = -1; note > -1; --note)
     {
         if((Input::GetMouseDown(MouseButton::MouseLeft) && mousetouched == -1))
@@ -220,30 +261,13 @@ void PianoPlayer::OnUpdate()
             }
         }
 
-        // Auto playing
-        if(playing() && records.size() > 2)
+        if(track != -1)
         {
-            float off = TimeEngine::time() - startPlayback;
-
-            if(off >= curPlayback)
-            {
-                // select the next tracks
-                ++track;
-                curPlayback = records.at(track).first;
-            }
-
-            std::vector<int> *_selNotes = &(records.at(track).second);
-            if(std::end(*_selNotes) != std::find(std::begin(*_selNotes), std::end(*_selNotes), note))
+            std::set<int> *_selNotes = &(records.at(track).second);
+            if(_selNotes->find(note) != std::end(*_selNotes))
                 playRecNote = note;
             else
                 playRecNote = -1;
-
-            // Are looping
-            if(track == records.size() - 1)
-            {
-                // Replay
-                playRecord();
-            }
         }
 
         if(Input::GetKeyDown(notes[note].key) || mousetouched == note || playRecNote == note)
@@ -254,7 +278,7 @@ void PianoPlayer::OnUpdate()
                 notes[note].render->setSprite(notes[note].hover);
                 notes[note].source->Play();
             }
-            __stack_records__.emplace_back(note);
+            __stack_records__.insert(note);
 
             // Draw particle
             MakeParticleUpNote(note);
@@ -270,29 +294,47 @@ void PianoPlayer::OnUpdate()
     if(recording())
     {
         int cmpt = 1;
-        //float lastTime = records.at(records.size() - 1).first;0
+        // float lastTime = records.at(records.size() - 1).first;
         curPlayback = TimeEngine::time() - startPlayback;
 
         if(__stack_records__.size() == records.at(records.size() - 1).second.size())
-            cmpt = memcmp(records.at(records.size() - 1).second.data(), __stack_records__.data(), __stack_records__.size());
+        {
+
+            /*std::vector*/
+            // cmpt = memcmp(records.at(records.size() - 1).second.data(), __stack_records__.data(),__stack_records__.size());
+
+            /*std::set*/
+            cmpt = 0; // set of begin compare
+            for(int v : __stack_records__)
+            {
+                for(std::pair<float, std::set<int>> &k : records)
+                {
+                    if(k.second.find(v) == std::end(k.second))
+                    {
+                        cmpt = 1; // not have compared notes
+                        break;
+                    }
+                }
+                if(cmpt == 1)
+                    break;
+            }
+        }
 
         // No write last screen if then compare as 0
         if(cmpt != 0)
             // Record
-            records.emplace_back(
-                std::move(std::make_pair<float, std::vector<int>>(float(curPlayback), std::move(__stack_records__))));
+            records.emplace_back(std::move(std::make_pair<float, std::set<int>>(float(curPlayback), std::move(__stack_records__))));
     }
 }
 
 void PianoPlayer::OnGizmos()
 {
-    Gizmos::DrawTextLegacy(Vec2::up * 2, "Epic Piano Instrument v1.0");
-    Gizmos::DrawTextLegacy((Vec2::right + Vec2::down) * 2, "Execuiting on Ronin Engine");
+    Gizmos::DrawTextLegacy((Vec2::left + Vec2::down * 3.4f), "Epic Piano Instrument v1.1 | Running on Ronin Engine (badcast)");
 
     if(Input::GetMouseDown(MouseButton::MouseRight))
     {
-        Gizmos::SetColor(Color {0, 0, 0, 100});
-        Gizmos::DrawFillRect(Vec2::zero, 10, 5);
+        Gizmos::SetColor(Color {Color::black, 160});
+        Gizmos::DrawFillRect(Vec2::zero, 16, 10);
         Gizmos::SetColor(Color::white);
         Gizmos::DrawTextLegacy(Vec2::zero, "Reloading...");
         RoninSimulator::ReloadWorld();
@@ -320,14 +362,14 @@ void PianoPlayer::beginRecord()
 {
     clearRecord();
     startPlayback = TimeEngine::time();
-    records.emplace_back(std::move(std::make_pair(0.f, std::move(std::vector<int> {}))));
+    records.emplace_back(std::move(std::make_pair(0.f, std::move(std::set<int> {}))));
 }
 
 void PianoPlayer::endRecord()
 {
     if(recording())
     {
-        records.emplace_back(std::move(std::make_pair(-1.f, std::move(std::vector<int> {}))));
+        records.emplace_back(std::move(std::make_pair(-1.f, std::move(std::set<int> {}))));
         stopPlay();
     }
 }

@@ -1,3 +1,4 @@
+#include <set>
 #include <ronin/framework.h>
 
 // #include <SoundTouch.h>
@@ -21,7 +22,7 @@ struct PianoNote
 class PianoPlayer : public Behaviour
 {
 protected:
-    std::vector<std::pair<float,std::vector<int>>> records {};
+    std::vector<std::pair<float,std::set<int>>> records {};
     int track;
     float startPlayback;
     float curPlayback;
@@ -31,6 +32,8 @@ public:
     Sprite *spr_black_hover;
     Sprite *spr_white;
     Sprite *spr_white_hover;
+
+    Sprite *visual_background;
 
     PianoPlayer() : Behaviour("Piano Player")
     {
