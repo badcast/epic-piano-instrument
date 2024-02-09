@@ -26,6 +26,7 @@ protected:
     int track;
     float startPlayback;
     float curPlayback;
+    std::vector<ParticleSystem*> _particles;
 
 public:
     Sprite *spr_black;

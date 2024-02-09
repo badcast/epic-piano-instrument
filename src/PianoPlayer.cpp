@@ -37,7 +37,8 @@ void MakeParticleUpNote(int note)
 {
     Vec2 pos = notes[note].render->transform()->position();
 
-    ParticleSystem *p = Primitive::CreateEmptyGameObject( { pos.x, notes[0].render->transform()->position().y + notes[0].render->getSize().y })->AddComponent<ParticleSystem>();
+    ParticleSystem *p = Primitive::CreateEmptyGameObject({pos.x, notes[0].render->transform()->position().y + notes[0].render->getSize().y})
+                            ->AddComponent<ParticleSystem>();
 
     p->loop = false;
     p->speed = 3;
@@ -48,8 +49,7 @@ void MakeParticleUpNote(int note)
     p->setLimit(1);
     p->setInterpolates(1.3, 0.3, 0.1);
     p->setSize(Vec2::half / 6);
-    p->setColor(Color(255,100,124));
-
+    p->setColor(Color(255, 100, 124));
 }
 
 void OnTransparencyChange(UI::uid, float newValue)
@@ -108,6 +108,12 @@ void PianoPlayer::OnAwake()
     playerInstance = this;
     std::string notesDir {GetDataDir() += "/sounds/"};
 
+    enum : int
+    {
+        LAYER_NOTES = 0,
+        LAYER_PARTICLES = 10
+    };
+
     // load sprites
     Vec2 vector1 {0.5f, 2.f};
     Vec2 pianoOffset = {0, -2};
@@ -155,6 +161,8 @@ void PianoPlayer::OnAwake()
         // Add sprite and Transform layer
         notes[x].render = Primitive::CreateEmptyGameObject()->AddComponent<SpriteRenderer>();
         notes[x].render->transform()->localPosition(offset_left);
+        notes[x].render->transform()->layer(LAYER_NOTES);
+
         offset_left += Vec2::right * vector1.x;
 
         // load clips
@@ -165,13 +173,14 @@ void PianoPlayer::OnAwake()
         }
         notes[x].source = this->AddComponent<AudioSource>();
         notes[x].source->setClip(Resources::GetAudioClipSource(note_wav));
-        notes[x].source->setVolume(1);
+        notes[x].source->setVolume(1.0f);
     }
 
     // write black tones
     for(x = 0; x < NotesBlackNum; ++x)
     {
         notes[x + NotesWhiteNum].render->setSprite(spr_black);
+        notes[x + NotesWhiteNum].render->transform()->layer(LAYER_NOTES+1);
         notes[x + NotesWhiteNum].normal = spr_black;
         notes[x + NotesWhiteNum].hover = spr_black_hover;
     }
@@ -190,9 +199,33 @@ void PianoPlayer::OnAwake()
             offset_left.x -= vector1.x / 2;
             offset_left.y += notes[y].render->getSize().y / 2;
             notes[y].render->transform()->position(offset_left);
-            notes[y].render->transform()->layer(2);
             ++y;
         }
+    }
+
+    // Generate particles
+    for(x = 0; x < sizeof(notes) / sizeof(notes[0]); ++x)
+    {
+        ParticleSystem *p = Primitive::CreateEmptyGameObject()->AddComponent<ParticleSystem>();
+        p->emit = false; // default set emit is off
+        p->randomDirection = true;
+        p->destroyAfter = false;
+        p->startWith = 6;
+        p->interval = 0.05f;
+        p->speed = 0.3f;
+
+        p->setInterpolates(1.5f);
+
+        p->setSource(Sprite::CreateWhiteSprite());
+
+        p->setSize(Vec2::one * 0.02f);
+        p->setColors(Color::yellow, Color::yellow, {Color::red, 0});
+        p->transform()->layer(LAYER_PARTICLES);
+
+        p->transform()->position(
+            {notes[x].render->transform()->position().x, notes[0].render->transform()->position().y + notes[0].render->getSize().y});
+
+        _particles.push_back(p);
     }
 
     // Generate Visual Layer
@@ -249,6 +282,8 @@ void PianoPlayer::OnUpdate()
 
     for(int note = NotesWhiteNum + NotesBlackNum - 1, playRecNote = -1; note > -1; --note)
     {
+        _particles[note]->emit = false;
+
         if((Input::GetMouseDown(MouseButton::MouseLeft) && mousetouched == -1))
         {
             SpriteRenderer *noteRenderer = notes[note].render;
@@ -282,6 +317,8 @@ void PianoPlayer::OnUpdate()
 
             // Draw particle
             MakeParticleUpNote(note);
+
+            _particles[note]->emit = true;
         }
         else if(Input::GetKeyUp(notes[note].key))
         {
