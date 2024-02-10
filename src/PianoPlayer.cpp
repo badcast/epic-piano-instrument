@@ -33,25 +33,6 @@ std::string GetDataDir()
     return __dataDirectory;
 }
 
-void MakeParticleUpNote(int note)
-{
-    Vec2 pos = notes[note].render->transform()->position();
-
-    ParticleSystem *p = Primitive::CreateEmptyGameObject({pos.x, notes[0].render->transform()->position().y + notes[0].render->getSize().y})
-                            ->AddComponent<ParticleSystem>();
-
-    p->loop = false;
-    p->speed = 3;
-    p->rotate = false;
-    p->destroyAfter = true;
-
-    p->setSource(Sprite::CreateWhiteSprite());
-    p->setLimit(1);
-    p->setInterpolates(1.3, 0.3, 0.1);
-    p->setSize(Vec2::half / 6);
-    p->setColor(Color(255, 100, 124));
-}
-
 void OnTransparencyChange(UI::uid, float newValue)
 {
     for(int x = 0; x < NotesWhiteNum + NotesBlackNum; ++x)
@@ -129,6 +110,8 @@ void PianoPlayer::OnAwake()
         RoninSimulator::Log("Visual sprite is no loaded");
     }
 
+    visual_note = Sprite::CreateWhiteSprite();
+
     __stack_records__.clear();
     clearRecord();
 
@@ -180,7 +163,7 @@ void PianoPlayer::OnAwake()
     for(x = 0; x < NotesBlackNum; ++x)
     {
         notes[x + NotesWhiteNum].render->setSprite(spr_black);
-        notes[x + NotesWhiteNum].render->transform()->layer(LAYER_NOTES+1);
+        notes[x + NotesWhiteNum].render->transform()->layer(LAYER_NOTES + 1);
         notes[x + NotesWhiteNum].normal = spr_black;
         notes[x + NotesWhiteNum].hover = spr_black_hover;
     }
@@ -206,26 +189,42 @@ void PianoPlayer::OnAwake()
     // Generate particles
     for(x = 0; x < sizeof(notes) / sizeof(notes[0]); ++x)
     {
-        ParticleSystem *p = Primitive::CreateEmptyGameObject()->AddComponent<ParticleSystem>();
-        p->emit = false; // default set emit is off
-        p->randomDirection = true;
-        p->destroyAfter = false;
-        p->startWith = 6;
-        p->interval = 0.05f;
-        p->speed = 0.3f;
+        ParticleSystem *p1, *p2;
+        p1 = Primitive::CreateEmptyGameObject()->AddComponent<ParticleSystem>();
 
-        p->setInterpolates(1.5f);
+        p1->emit=false;
+        p1->loop = true;
+        p1->speed = 3;
+        p1->rotate = false;
+        p1->destroyAfter = false;
+        p1->interval = 0.01f;
 
-        p->setSource(Sprite::CreateWhiteSprite());
+        p1->setSource(visual_note);
+        p1->setInterpolates(1.3, 0.0, 0.1);
+        p1->setSize(Vec2::half / 6);
+        p1->setColors(Color(255, 100, 124), Color(255, 100, 124),Color(255, 100, 124,0));
 
-        p->setSize(Vec2::one * 0.02f);
-        p->setColors(Color::yellow, Color::yellow, {Color::red, 0});
-        p->transform()->layer(LAYER_PARTICLES);
+        p2 = p1->gameObject()->AddComponent<ParticleSystem>();
 
-        p->transform()->position(
+        p2->emit = false; // default set emit is off
+        p2->randomDirection = true;
+        p2->destroyAfter = false;
+        p2->startWith = 6;
+        p2->interval = 0.05f;
+        p2->speed = 0.3f;
+
+        p2->setInterpolates(1.5f);
+
+        p2->setSource(Sprite::CreateWhiteSprite());
+
+        p2->setSize(Vec2::one * 0.02f);
+        p2->setColors(Color::yellow, Color::yellow, {Color::red, 0});
+        p2->transform()->layer(LAYER_PARTICLES);
+
+        p2->transform()->position(
             {notes[x].render->transform()->position().x, notes[0].render->transform()->position().y + notes[0].render->getSize().y});
 
-        _particles.push_back(p);
+        _particles.emplace_back(p1, p2);
     }
 
     // Generate Visual Layer
@@ -282,7 +281,8 @@ void PianoPlayer::OnUpdate()
 
     for(int note = NotesWhiteNum + NotesBlackNum - 1, playRecNote = -1; note > -1; --note)
     {
-        _particles[note]->emit = false;
+        _particles[note].first->emit = false;
+        _particles[note].second->emit = false;
 
         if((Input::GetMouseDown(MouseButton::MouseLeft) && mousetouched == -1))
         {
@@ -316,9 +316,8 @@ void PianoPlayer::OnUpdate()
             __stack_records__.insert(note);
 
             // Draw particle
-            MakeParticleUpNote(note);
-
-            _particles[note]->emit = true;
+            _particles[note].first->emit = true;
+            _particles[note].second->emit = true;
         }
         else if(Input::GetKeyUp(notes[note].key))
         {
