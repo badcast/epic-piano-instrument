@@ -5,22 +5,24 @@
 
 using namespace std;
 #if WIN32
-int WinMain(void*, void*, void*, int)
+int WinMain(void *, void *, void *, int)
 #else
 int main()
 #endif
 {
     RoninSimulator::Init();
 
-    Resolution resolution{1024, 512};
+    PianoWorld world;
+
+    Resolution resolution {1024, 768};
     RoninSimulator::Show(resolution, false);
 
-    PianoWorld world;
-    RoninSimulator::SetDebugMode(1);
-    RoninSimulator::LoadWorld(&world);
-    RoninSimulator::Simulate();
+    if(RoninSimulator::LoadWorld(&world) == true)
+    {
+        RoninSimulator::Simulate();
+    }
 
-    RoninSimulator::Finalize();
+     RoninSimulator::Finalize();
 
     return 0;
 }

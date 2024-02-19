@@ -3,14 +3,31 @@
 #include "PianoWorld.h"
 
 // Black And White key layout
-constexpr int piano_key_layout[] {0, 1, 1, 0, 1, 1, 1};
+constexpr KeyboardCode KEY_NONE {static_cast<KeyboardCode>(0)};
 
+constexpr int piano_key_layout[] {0, 1, 1, 0, 1, 1, 1};
 // F#
 constexpr KeyboardCode piano_key_keyboard_black_keys[] {KB_S, KB_D, KB_G, KB_H, KB_J, KB_2, KB_3, KB_5, KB_6, KB_7, KB_9, KB_0};
 
 // C#
-constexpr KeyboardCode piano_key_keyboard_white_keys[] {
-    KB_Z, KB_X, KB_C, KB_V, KB_B, KB_N, KB_M, KB_Q, KB_W, KB_E, KB_R, KB_T, KB_Y, KB_U, KB_I, KB_O, KB_P};
+constexpr KeyboardCode piano_key_keyboard_white_keys[][2] {
+    {KB_Z, KEY_NONE},
+    {KB_X, KEY_NONE},
+    {KB_C, KEY_NONE},
+    {KB_V, KEY_NONE},
+    {KB_B, KEY_NONE},
+    {KB_N, KEY_NONE},
+    {KB_M, KEY_NONE},
+    {KB_Q, KB_COMMA},
+    {KB_W, KB_PERIOD},
+    {KB_E, KB_SLASH},
+    {KB_R, KEY_NONE},
+    {KB_T, KEY_NONE},
+    {KB_Y, KEY_NONE},
+    {KB_U, KEY_NONE},
+    {KB_I, KEY_NONE},
+    {KB_O, KEY_NONE},
+    {KB_P, KEY_NONE}};
 
 constexpr int NotesBlackNum = 12;
 constexpr int NotesWhiteNum = 17;
@@ -87,12 +104,14 @@ void PianoPlayer::OnAwake()
     char buffer[64];
     const char ext[] = ".ogg";
     playerInstance = this;
-    std::string notesDir {GetDataDir() += "/sounds/"};
+    std::string notesDir {std::move(GetDataDir() += "/sounds/")};
 
     enum : int
     {
-        LAYER_NOTES = 0,
-        LAYER_PARTICLES = 10
+        LAYER_VISUALBACK = 0,
+        LAYER_BACKNOTE  = 2,
+        LAYER_PARTICLES = 4,
+        LAYER_NOTES     = 6,
     };
 
     // load sprites
@@ -120,13 +139,13 @@ void PianoPlayer::OnAwake()
     {
         snprintf(buffer, sizeof(buffer), "C-%d", 6 - x);
         notes[x].name = buffer;
-        notes[x].key = piano_key_keyboard_white_keys[x];
+        std::memcpy(notes[x].keys, piano_key_keyboard_white_keys[x], sizeof(notes[x].keys));
     }
     for(; x < 17; ++x)
     {
         snprintf(buffer, sizeof(buffer), "C+%d", x - 7);
         notes[x].name = buffer;
-        notes[x].key = piano_key_keyboard_white_keys[x];
+        std::memcpy(notes[x].keys, piano_key_keyboard_white_keys[x], sizeof(notes[x].keys));
     }
 
     // Setting Black notes
@@ -134,7 +153,8 @@ void PianoPlayer::OnAwake()
     {
         snprintf(buffer, sizeof(buffer), "F+%d", x);
         notes[x + NotesWhiteNum].name = buffer;
-        notes[x + NotesWhiteNum].key = piano_key_keyboard_black_keys[x];
+        notes[x + NotesWhiteNum].keys[0] = piano_key_keyboard_black_keys[x];
+        // notes[x + NotesWhiteNum].keys[1] = KEY_NONE;
     }
 
     // init piano sources
@@ -186,13 +206,27 @@ void PianoPlayer::OnAwake()
         }
     }
 
-    // Generate particles
+    // Generate Visual Layer
+    SpriteRenderer *visualObject = Primitive::CreateEmptyGameObject()->AddComponent<SpriteRenderer>();
+    visualObject->setSprite(visual_background);
+    visualObject->setColor(Color(Color::white, 128));
+    visualObject->setSize({1, 2});
+    vector1 = notes[0].render->transform()->position();
+    vector1.x += visual_background->size().x / 2 - notes[0].render->getSize().x / 2 + 0.25f;
+    vector1.y += visual_background->size().y + notes[0].render->getSize().y - 0.1f;
+
+    visualObject->transform()->layer(LAYER_VISUALBACK);
+    visualObject->transform()->position(vector1);
+
+    // Generate Renderers
     for(x = 0; x < sizeof(notes) / sizeof(notes[0]); ++x)
     {
+        SpriteRenderer *backNote;
         ParticleSystem *p1, *p2;
+
         p1 = Primitive::CreateEmptyGameObject()->AddComponent<ParticleSystem>();
 
-        p1->emit=false;
+        p1->emit = false;
         p1->loop = true;
         p1->speed = 3;
         p1->rotate = false;
@@ -202,7 +236,7 @@ void PianoPlayer::OnAwake()
         p1->setSource(visual_note);
         p1->setInterpolates(1.3, 0.0, 0.1);
         p1->setSize(Vec2::half / 6);
-        p1->setColors(Color(255, 100, 124), Color(255, 100, 124),Color(255, 100, 124,0));
+        p1->setColors(Color(255, 100, 124), Color(255, 100, 124), Color(255, 100, 124, 0));
 
         p2 = p1->gameObject()->AddComponent<ParticleSystem>();
 
@@ -225,18 +259,16 @@ void PianoPlayer::OnAwake()
             {notes[x].render->transform()->position().x, notes[0].render->transform()->position().y + notes[0].render->getSize().y});
 
         _particles.emplace_back(p1, p2);
+
+        backNote = Primitive::CreateEmptyGameObject({p1->transform()->position().x, visualObject->transform()->position().y})
+                       ->AddComponent<SpriteRenderer>();
+        backNote->transform()->layer(LAYER_BACKNOTE);
+        backNote->setSize({0.9f, 3.7});
+        backNote->setColor({Color::black, 0});
+
+        backNote->setSprite(spr_black);
+        _backDrawNotes.emplace_back(backNote);
     }
-
-    // Generate Visual Layer
-    SpriteRenderer *visualObject = Primitive::CreateEmptyGameObject()->AddComponent<SpriteRenderer>();
-    visualObject->setSprite(visual_background);
-    visualObject->setColor(Color(Color::white, 128));
-    visualObject->setSize({1, 2});
-    vector1 = notes[0].render->transform()->position();
-    vector1.x += visual_background->size().x / 2 - notes[0].render->getSize().x / 2 + 0.25f;
-    vector1.y += visual_background->size().y + notes[0].render->getSize().y - 0.1f;
-
-    visualObject->transform()->position(vector1);
 
     // Generate GUI
     World::self()->GetGUI()->PushLabel("Volume:", Vec2Int::right * 25 + Vec2Int::up * 15);
@@ -305,11 +337,12 @@ void PianoPlayer::OnUpdate()
                 playRecNote = -1;
         }
 
-        if(Input::GetKeyDown(notes[note].key) || mousetouched == note || playRecNote == note)
+        if((Input::GetKeyDown(notes[note].keys[0]) || Input::GetKeyDown(notes[note].keys[1])) || mousetouched == note ||
+           playRecNote == note)
         {
-            if(notes[note].state == false)
+            if(notes[note].close == false)
             {
-                notes[note].state = true;
+                notes[note].close = true;
                 notes[note].render->setSprite(notes[note].hover);
                 notes[note].source->Play();
             }
@@ -318,12 +351,15 @@ void PianoPlayer::OnUpdate()
             // Draw particle
             _particles[note].first->emit = true;
             _particles[note].second->emit = true;
+            _backDrawNotes[note]->setColor({Color::black, 127});
         }
-        else if(Input::GetKeyUp(notes[note].key))
+        else if(Input::GetKeyUp(notes[note].keys[0]) || Input::GetKeyUp(notes[note].keys[1]))
         {
-            notes[note].state = false;
+            notes[note].close = false;
             notes[note].render->setSprite(notes[note].normal);
+            _backDrawNotes[note]->setColor(Color::Lerp(_backDrawNotes[note]->getColor(), Color::transparent, TimeEngine::deltaTime() * 2));
         }
+
     }
 
     // Can record

@@ -8,10 +8,10 @@ using namespace RoninEngine::Runtime;
 
 struct PianoNote
 {
-    bool state;
+    bool close;
 
     std::string name;
-    KeyboardCode key;
+    KeyboardCode keys[2];
     AudioSource *source;
     SpriteRenderer *render;
 
@@ -27,6 +27,7 @@ protected:
     float startPlayback;
     float curPlayback;
     std::vector<std::pair<ParticleSystem *, ParticleSystem *>> _particles;
+    std::vector<SpriteRenderer*> _backDrawNotes;
 
 public:
     Sprite *spr_black;
