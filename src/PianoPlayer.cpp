@@ -3,46 +3,45 @@
 #include "PianoWorld.h"
 
 // Black And White key layout
-constexpr KeyboardCode KEY_NONE {static_cast<KeyboardCode>(0)};
-
 constexpr int piano_key_layout[] {0, 1, 1, 0, 1, 1, 1};
 // F#
 constexpr KeyboardCode piano_key_keyboard_black_keys[] {KB_S, KB_D, KB_G, KB_H, KB_J, KB_2, KB_3, KB_5, KB_6, KB_7, KB_9, KB_0};
 
 // C#
 constexpr KeyboardCode piano_key_keyboard_white_keys[][2] {
-    {KB_Z, KEY_NONE},
-    {KB_X, KEY_NONE},
-    {KB_C, KEY_NONE},
-    {KB_V, KEY_NONE},
-    {KB_B, KEY_NONE},
-    {KB_N, KEY_NONE},
-    {KB_M, KEY_NONE},
+    {KB_Z, KB_UNKNOWN},
+    {KB_X, KB_UNKNOWN},
+    {KB_C, KB_UNKNOWN},
+    {KB_V, KB_UNKNOWN},
+    {KB_B, KB_UNKNOWN},
+    {KB_N, KB_UNKNOWN},
+    {KB_M, KB_UNKNOWN},
     {KB_Q, KB_COMMA},
     {KB_W, KB_PERIOD},
     {KB_E, KB_SLASH},
-    {KB_R, KEY_NONE},
-    {KB_T, KEY_NONE},
-    {KB_Y, KEY_NONE},
-    {KB_U, KEY_NONE},
-    {KB_I, KEY_NONE},
-    {KB_O, KEY_NONE},
-    {KB_P, KEY_NONE}};
+    {KB_R, KB_UNKNOWN},
+    {KB_T, KB_UNKNOWN},
+    {KB_Y, KB_UNKNOWN},
+    {KB_U, KB_UNKNOWN},
+    {KB_I, KB_UNKNOWN},
+    {KB_O, KB_UNKNOWN},
+    {KB_P, KB_UNKNOWN}};
 
 constexpr int NotesBlackNum = 12;
 constexpr int NotesWhiteNum = 17;
+constexpr int AllNotes = NotesBlackNum + NotesWhiteNum;
 
 int mousetouched;
 
-ResId notes_res[NotesWhiteNum + NotesBlackNum];
-PianoNote notes[NotesWhiteNum + NotesBlackNum];
+ResId notes_res[AllNotes];
+PianoNote notes[AllNotes];
 
 std::set<int> __stack_records__ {};
 
 std::string GetDataDir()
 {
 #ifndef DATA_NOTES_DIR
-    std::string __dataDirectory {std::move(Path::app_dir())};
+    std::string __dataDirectory {std::move(Paths::GetRuntimeDir())};
     __dataDirectory += "data";
 #else
     std::string __dataDirectory {DATA_NOTES_DIR};
@@ -109,9 +108,9 @@ void PianoPlayer::OnAwake()
     enum : int
     {
         LAYER_VISUALBACK = 0,
-        LAYER_BACKNOTE  = 2,
+        LAYER_BACKNOTE = 2,
         LAYER_PARTICLES = 4,
-        LAYER_NOTES     = 6,
+        LAYER_NOTES = 6,
     };
 
     // load sprites
@@ -260,7 +259,7 @@ void PianoPlayer::OnAwake()
 
         _particles.emplace_back(p1, p2);
 
-        backNote = Primitive::CreateEmptyGameObject({p1->transform()->position().x, visualObject->transform()->position().y})
+        backNote = Primitive::CreateEmptyGameObject(Vec2 {p1->transform()->position().x, visualObject->transform()->position().y})
                        ->AddComponent<SpriteRenderer>();
         backNote->transform()->layer(LAYER_BACKNOTE);
         backNote->setSize({0.9f, 3.7});
@@ -359,7 +358,6 @@ void PianoPlayer::OnUpdate()
             notes[note].render->setSprite(notes[note].normal);
             _backDrawNotes[note]->setColor(Color::Lerp(_backDrawNotes[note]->getColor(), Color::transparent, TimeEngine::deltaTime() * 2));
         }
-
     }
 
     // Can record
@@ -401,22 +399,31 @@ void PianoPlayer::OnUpdate()
 
 void PianoPlayer::OnGizmos()
 {
-    Gizmos::DrawTextLegacy((Vec2::left + Vec2::down * 3.4f), "Epic Piano Instrument v1.1 | Running on Ronin Engine (badcast)");
+    RenderUtility::DrawTextLegacy((Vec2::left + Vec2::down * 3.4f), "Epic Piano Instrument v1.1 | Running on Ronin Engine (badcast)");
 
     if(Input::GetMouseDown(MouseButton::MouseRight))
     {
-        Gizmos::SetColor(Color {Color::black, 160});
-        Gizmos::DrawFillRect(Vec2::zero, 16, 10);
-        Gizmos::SetColor(Color::white);
-        Gizmos::DrawTextLegacy(Vec2::zero, "Reloading...");
+        RenderUtility::SetColor(Color {Color::black, 160});
+        RenderUtility::DrawFillRect(Vec2::zero, 16, 10);
+        RenderUtility::SetColor(Color::white);
+        RenderUtility::DrawTextLegacy(Vec2::zero, "Reloading...");
         RoninSimulator::ReloadWorld();
     }
     if(mousetouched != -1)
     {
-        Gizmos::SetColor(Color::white);
+        RenderUtility::SetColor(Color::white);
         Rect area;
         Rectf noteArea = {notes[mousetouched].render->transform()->position(), notes[mousetouched].render->getSprite()->size()};
-        Gizmos::DrawRectangle(noteArea.GetXY(), noteArea.w, noteArea.h);
+        RenderUtility::DrawRectangle(noteArea.GetXY(), noteArea.w, noteArea.h);
+    }
+
+    for(int n = 0; n < AllNotes; ++n)
+    {
+        auto kName = Input::GetKeyName(notes[n].keys[0]);
+        Vec2 p = notes[n].render->transform()->position();
+        p.x -= 0.05f;
+        p.y -= 0.2f;
+        RenderUtility::DrawTextLegacy(p, kName, n < NotesWhiteNum ? true : notes[n].close);
     }
 }
 

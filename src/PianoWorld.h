@@ -22,12 +22,12 @@ struct PianoNote
 class PianoPlayer : public Behaviour
 {
 protected:
-    std::vector<std::pair<float, std::set<int>>> records {};
     int track;
     float startPlayback;
     float curPlayback;
+    std::vector<std::pair<float, std::set<int>>> records {};
     std::vector<std::pair<ParticleSystem *, ParticleSystem *>> _particles;
-    std::vector<SpriteRenderer*> _backDrawNotes;
+    std::vector<SpriteRenderer *> _backDrawNotes;
 
 public:
     Sprite *spr_black;
