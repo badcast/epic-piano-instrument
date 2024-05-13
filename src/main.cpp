@@ -15,7 +15,7 @@ int main()
     PianoWorld world;
     std::string keyName;
 
-    keyName = Input::GetKeyName(KeyboardCode::KB_UNKNOWN);
+    keyName = Input::GetKeyName(KeyboardCode::KB_UNKNOWN+1);
     if(keyName != "None")
         cout << ("Test 1 fail") << endl;
 
@@ -36,11 +36,13 @@ int main()
         cout << ("Test 5 fail") << endl;
 
     keyName = Input::GetKeyName(KeyboardCode::KB_RGUI);
-    if(keyName != "Right Gui")
+    if(keyName != "RGUI")
         cout << ("Test 6 fail") << endl;
 
     Resolution resolution {1024, 768};
     RoninSimulator::Show(resolution, false);
+
+    RoninSimulator::SetDebugMode(true);
 
     if(RoninSimulator::LoadWorld(&world) == true)
     {

@@ -49,9 +49,14 @@ std::string GetDataDir()
     return __dataDirectory;
 }
 
+const float playTime()
+{
+    return Time::startUpTime();
+}
+
 void OnTransparencyChange(UI::uid, float newValue)
 {
-    for(int x = 0; x < NotesWhiteNum + NotesBlackNum; ++x)
+    for(int x = 0; x < AllNotes; ++x)
     {
         notes[x].render->setColor(Color(Color::white, newValue * 255));
     }
@@ -59,7 +64,7 @@ void OnTransparencyChange(UI::uid, float newValue)
 
 void OnVolumeChange(UI::uid, float newValue)
 {
-    for(int x = 0; x < NotesWhiteNum + NotesBlackNum; ++x)
+    for(int x = 0; x < AllNotes; ++x)
     {
         notes[x].source->setVolume(newValue);
     }
@@ -99,12 +104,6 @@ void OnRecordStopPlay(UI::uid but)
 
 void PianoPlayer::OnAwake()
 {
-    int x, y;
-    char buffer[64];
-    const char ext[] = ".ogg";
-    playerInstance = this;
-    std::string notesDir {std::move(GetDataDir() += "/sounds/")};
-
     enum : int
     {
         LAYER_VISUALBACK = 0,
@@ -113,7 +112,12 @@ void PianoPlayer::OnAwake()
         LAYER_NOTES = 6,
     };
 
-    // load sprites
+    int x, y;
+    char buffer[64];
+    const char ext[] = ".ogg";
+    playerInstance = this;
+    std::string notesDir {std::move(GetDataDir() += "/sounds/")};
+
     Vec2 vector1 {0.5f, 2.f};
     Vec2 pianoOffset = {0, -2};
 
@@ -168,14 +172,15 @@ void PianoPlayer::OnAwake()
         offset_left += Vec2::right * vector1.x;
 
         // load clips
-        ResId note_wav;
-        if(!(note_wav = notes_res[x]))
+        ResId waveNote;
+        if(!(waveNote = notes_res[x]))
         {
-            note_wav = notes_res[x] = Resources::LoadAudioClip(notesDir + notes[x].name + ext, false);
+            waveNote = notes_res[x] = Resources::LoadAudioClip(notesDir + notes[x].name + ext, false);
         }
         notes[x].source = this->AddComponent<AudioSource>();
-        notes[x].source->setClip(Resources::GetAudioClipSource(note_wav));
+        notes[x].source->setClip(Resources::GetAudioClipSource(waveNote));
         notes[x].source->setVolume(1.0f);
+        notes[x].noteName = Input::GetKeyName(notes[x].keys[0]);
     }
 
     // write black tones
@@ -285,15 +290,22 @@ void PianoPlayer::OnUpdate()
 {
     Vec2 ms = Camera::ScreenToWorldPoint(Input::GetMousePointf());
 
+    static float a = 0;
+    ++a;
+    Camera::mainCamera()->transform()->angle(a);
+
     // flush
     __stack_records__.clear();
 
     mousetouched = -1;
 
+    if(Input::GetKeyUp(KeyboardCode::KB_ESCAPE))
+        RoninSimulator::RequestQuit();
+
     // Auto playing
     if(playing() && records.size() > 2)
     {
-        float off = TimeEngine::time() - startPlayback;
+        float off = playTime() - startPlayback;
 
         if(off >= curPlayback)
         {
@@ -310,7 +322,7 @@ void PianoPlayer::OnUpdate()
         }
     }
 
-    for(int note = NotesWhiteNum + NotesBlackNum - 1, playRecNote = -1; note > -1; --note)
+    for(int note = AllNotes - 1, playRecNote = -1; note > -1; --note)
     {
         _particles[note].first->emit = false;
         _particles[note].second->emit = false;
@@ -341,9 +353,11 @@ void PianoPlayer::OnUpdate()
         {
             if(notes[note].close == false)
             {
-                notes[note].close = true;
                 notes[note].render->setSprite(notes[note].hover);
+                notes[note].startPlayTime = playTime();
+                notes[note].source->setVolume(1);
                 notes[note].source->Play();
+                notes[note].close = true;
             }
             __stack_records__.insert(note);
 
@@ -352,11 +366,34 @@ void PianoPlayer::OnUpdate()
             _particles[note].second->emit = true;
             _backDrawNotes[note]->setColor({Color::black, 127});
         }
-        else if(Input::GetKeyUp(notes[note].keys[0]) || Input::GetKeyUp(notes[note].keys[1]))
+        else if(Input::GetKeyUp(notes[note].keys[0]) || Input::GetKeyUp(notes[note].keys[1]) || mousetouched != note)
         {
             notes[note].close = false;
             notes[note].render->setSprite(notes[note].normal);
-            _backDrawNotes[note]->setColor(Color::Lerp(_backDrawNotes[note]->getColor(), Color::transparent, TimeEngine::deltaTime() * 2));
+            _backDrawNotes[note]->setColor(Color::Lerp(_backDrawNotes[note]->getColor(), Color::transparent, Time::deltaTime() * 2));
+        }
+    }
+
+    // Effect is tile remove
+    if(!efx)
+    {
+        float diff;
+        for(int note = 0; note < AllNotes; ++note)
+        {
+            diff = playTime() - notes[note].startPlayTime;
+            if(notes[note].startPlayTime > 0 &&  diff > 0.1f)
+            {
+                if(notes[note].source->getVolume() == 0)
+                {
+                    notes[note].source->Stop();
+                    notes[note].startPlayTime = 0;
+                }
+                else
+                {
+                    diff = Math::Clamp01(1.0 - diff);
+                    notes[note].source->setVolume(diff);
+                }
+            }
         }
     }
 
@@ -365,28 +402,31 @@ void PianoPlayer::OnUpdate()
     {
         int cmpt = 1;
         // float lastTime = records.at(records.size() - 1).first;
-        curPlayback = TimeEngine::time() - startPlayback;
+        curPlayback = playTime() - startPlayback;
 
         if(__stack_records__.size() == records.at(records.size() - 1).second.size())
         {
-
             /*std::vector*/
-            // cmpt = memcmp(records.at(records.size() - 1).second.data(), __stack_records__.data(),__stack_records__.size());
-
-            /*std::set*/
-            cmpt = 0; // set of begin compare
-            for(int v : __stack_records__)
+            if constexpr(std::is_same_v<decltype(records), std::vector<int>>) {
+                //cmpt = memcmp(records.at(records.size() - 1).second.data(), __stack_records__.data(), __stack_records__.size());
+            }
+            else
             {
-                for(std::pair<float, std::set<int>> &k : records)
+                /*std::set*/
+                cmpt = 0; // set of begin compare
+                for(int v : __stack_records__)
                 {
-                    if(k.second.find(v) == std::end(k.second))
+                    for(std::pair<float, std::set<int>> &k : records)
                     {
-                        cmpt = 1; // not have compared notes
-                        break;
+                        if(k.second.find(v) == std::end(k.second))
+                        {
+                            cmpt = 1; // not have compared notes
+                            break;
+                        }
                     }
+                    if(cmpt == 1)
+                        break;
                 }
-                if(cmpt == 1)
-                    break;
             }
         }
 
@@ -409,21 +449,21 @@ void PianoPlayer::OnGizmos()
         RenderUtility::DrawTextLegacy(Vec2::zero, "Reloading...");
         RoninSimulator::ReloadWorld();
     }
+
     if(mousetouched != -1)
     {
         RenderUtility::SetColor(Color::white);
-        Rect area;
         Rectf noteArea = {notes[mousetouched].render->transform()->position(), notes[mousetouched].render->getSprite()->size()};
         RenderUtility::DrawRectangle(noteArea.GetXY(), noteArea.w, noteArea.h);
     }
 
+    Vec2 p;
     for(int n = 0; n < AllNotes; ++n)
     {
-        auto kName = Input::GetKeyName(notes[n].keys[0]);
-        Vec2 p = notes[n].render->transform()->position();
+        p = notes[n].render->transform()->position();
         p.x -= 0.05f;
         p.y -= 0.2f;
-        RenderUtility::DrawTextLegacy(p, kName, n < NotesWhiteNum ? true : notes[n].close);
+        RenderUtility::DrawTextLegacy(p, notes[n].noteName, n < NotesWhiteNum ? true : notes[n].close);
     }
 }
 
@@ -440,7 +480,7 @@ bool PianoPlayer::playing() const
 void PianoPlayer::beginRecord()
 {
     clearRecord();
-    startPlayback = TimeEngine::time();
+    startPlayback = playTime();
     records.emplace_back(std::move(std::make_pair(0.f, std::move(std::set<int> {}))));
 }
 
@@ -459,11 +499,16 @@ void PianoPlayer::clearRecord()
     records.clear();
 }
 
+void PianoPlayer::setEfx(bool value)
+{
+    efx = value;
+}
+
 bool PianoPlayer::playRecord()
 {
     if(!records.empty() && !recording())
     {
-        startPlayback = TimeEngine::time();
+        startPlayback = playTime();
         track = 0;         // start play
         curPlayback = 0.0; // reset time
         return true;
