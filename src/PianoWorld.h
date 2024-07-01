@@ -1,7 +1,8 @@
+#pragma once
+
 #include <set>
 #include <ronin/framework.h>
-
-// #include <SoundTouch.h>
+#include "IVStars.hpp"
 
 using namespace RoninEngine;
 using namespace RoninEngine::Runtime;
@@ -25,7 +26,8 @@ class PianoPlayer : public Behaviour
 {
 protected:
     int track;
-    bool efx;
+    bool efxRemainder;
+    bool legacyFonts;
     float startPlayback;
     float curPlayback;
     std::vector<std::pair<float, std::set<int>>> records {};
@@ -33,18 +35,14 @@ protected:
     std::vector<SpriteRenderer *> _backDrawNotes;
 
 public:
-    Sprite *spr_black;
-    Sprite *spr_black_hover;
-    Sprite *spr_white;
-    Sprite *spr_white_hover;
+    Sprite *spriteBlack;
+    Sprite *spriteBlackHover;
+    Sprite *spriteWhite;
+    Sprite *spriteWhiteHover;
+    Sprite *spriteVisualNote;
+    Sprite *spriteVisualBackground;
 
-    Sprite *visual_note;
-
-    Sprite *visual_background;
-
-    PianoPlayer() : Behaviour("Piano Player")
-    {
-    }
+    PianoPlayer();
 
     void OnAwake();
     void OnUpdate();
@@ -54,20 +52,37 @@ public:
     bool playing() const;
     void beginRecord();
     void endRecord();
-    bool playRecord();
-    void stopPlay();
-    void clearRecord();
-    void setEfx(bool value);
+
+    float duration();
+    float currentDuration();
+    void setDuration(float value);
+
+    int length();
+    int peek();
+    bool seek(int pos);
+    bool play();
+    void stop();
+    void clear();
+    void efxToggleRemainder(bool value);
+    void drawLegacyFont(bool value);
+
+    // TODO: Make save and load records from/to filename
+    void loadFromStream(const std::istream &in);
+    void saveToStream(std::ostream &out);
 };
 
 class PianoWorld : public World
 {
+    IVStars ivstars;
+    UI::uid sliderPosTrack;
 
 public:
     PianoPlayer *piano;
-    PianoWorld() : World("World Piano")
-    {
-    }
+    PianoWorld();
 
     void OnStart();
+
+    void OnUpdate();
+
+    void OnUnloading();
 };

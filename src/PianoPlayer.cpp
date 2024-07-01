@@ -1,42 +1,26 @@
 #include <cstring>
 
+#include <ronin/Debug.h>
+
 #include "PianoWorld.h"
 
-// Black And White key layout
-constexpr int piano_key_layout[] {0, 1, 1, 0, 1, 1, 1};
-// F#
-constexpr KeyboardCode piano_key_keyboard_black_keys[] {KB_S, KB_D, KB_G, KB_H, KB_J, KB_2, KB_3, KB_5, KB_6, KB_7, KB_9, KB_0};
+/////////////////////////
+//////// MEMBERS ////////
+/////////////////////////
 
-// C#
-constexpr KeyboardCode piano_key_keyboard_white_keys[][2] {
-    {KB_Z, KB_UNKNOWN},
-    {KB_X, KB_UNKNOWN},
-    {KB_C, KB_UNKNOWN},
-    {KB_V, KB_UNKNOWN},
-    {KB_B, KB_UNKNOWN},
-    {KB_N, KB_UNKNOWN},
-    {KB_M, KB_UNKNOWN},
-    {KB_Q, KB_COMMA},
-    {KB_W, KB_PERIOD},
-    {KB_E, KB_SLASH},
-    {KB_R, KB_UNKNOWN},
-    {KB_T, KB_UNKNOWN},
-    {KB_Y, KB_UNKNOWN},
-    {KB_U, KB_UNKNOWN},
-    {KB_I, KB_UNKNOWN},
-    {KB_O, KB_UNKNOWN},
-    {KB_P, KB_UNKNOWN}};
+#include "KeyData.h"
 
-constexpr int NotesBlackNum = 12;
-constexpr int NotesWhiteNum = 17;
-constexpr int AllNotes = NotesBlackNum + NotesWhiteNum;
+constexpr auto cstrVer = "Epic Piano Instrument v1.1 | Running on Ronin Engine (badcast)";
 
 int mousetouched;
-
 ResId notes_res[AllNotes];
 PianoNote notes[AllNotes];
-
+PianoPlayer *playerInstance;
 std::set<int> __stack_records__ {};
+
+///////////////////////////
+//////// FUNCTIONS ////////
+///////////////////////////
 
 std::string GetDataDir()
 {
@@ -49,12 +33,12 @@ std::string GetDataDir()
     return __dataDirectory;
 }
 
-const float playTime()
+const float playTimer()
 {
     return Time::startUpTime();
 }
 
-void OnTransparencyChange(UI::uid, float newValue)
+void OnTransparencyChange(UI::uid id, float newValue)
 {
     for(int x = 0; x < AllNotes; ++x)
     {
@@ -70,11 +54,9 @@ void OnVolumeChange(UI::uid, float newValue)
     }
 }
 
-PianoPlayer *playerInstance;
-
 void OnRecordState(UI::uid button)
 {
-    UI::GUI *gui = World::self()->GetGUI();
+    UI::GUI *gui = World::GetCurrentWorld()->GetGUI();
 
     if(!playerInstance->recording())
         playerInstance->beginRecord();
@@ -87,19 +69,23 @@ void OnRecordState(UI::uid button)
         gui->ElementSetText(button, "Begin Record");
 }
 
-void OnRecordPlay(UI::uid but)
+void OnRecordPlay(UI::uid)
 {
     if(playerInstance->recording())
         playerInstance->endRecord();
 
     // Play recorded notes
-    playerInstance->playRecord();
+    playerInstance->play();
 }
 
-void OnRecordStopPlay(UI::uid but)
+void OnRecordStopPlay(UI::uid)
 {
     // Stop play
-    playerInstance->stopPlay();
+    playerInstance->stop();
+}
+
+PianoPlayer::PianoPlayer() : Behaviour("Piano Player")
+{
 }
 
 void PianoPlayer::OnAwake()
@@ -121,21 +107,20 @@ void PianoPlayer::OnAwake()
     Vec2 vector1 {0.5f, 2.f};
     Vec2 pianoOffset = {0, -2};
 
-    spr_black = Primitive::CreateSpriteRectangle(true, vector1 / 2, Color::black);
-    spr_black_hover = Primitive::CreateSpriteRectangle(true, vector1 / 2, Color::gray);
-    spr_white = Primitive::CreateSpriteRectangle(true, vector1 - vector1 * 0.05f, Color::white);
-    spr_white_hover = Primitive::CreateSpriteRectangle(true, vector1 - vector1 * 0.05f / 7, Color::lightgray);
+    spriteBlack = Primitive::CreateSpriteRectangle(true, vector1 / 2, Color::black);
+    spriteBlackHover = Primitive::CreateSpriteRectangle(true, vector1 / 2, Color::gray);
+    spriteWhite = Primitive::CreateSpriteRectangle(true, vector1 - vector1 * 0.05f, Color::white);
+    spriteWhiteHover = Primitive::CreateSpriteRectangle(true, vector1 - vector1 * 0.05f / 7, Color::lightgray);
 
-    if((visual_background = Primitive::CreateSpriteFrom(
-            Resources::GetImageSource(Resources::LoadImage(GetDataDir() + "/layer.png", true)), true)) == nullptr)
+    if((spriteVisualBackground = Primitive::CreateSpriteFrom(Resources::GetImageSource(Resources::LoadImage(GetDataDir() + "/layer.png", true)), true)) == nullptr)
     {
         RoninSimulator::Log("Visual sprite is no loaded");
     }
 
-    visual_note = Sprite::CreateWhiteSprite();
+    spriteVisualNote = Sprite::CreateWhiteSprite();
 
     __stack_records__.clear();
-    clearRecord();
+    clear();
 
     // Setting White notes
     for(x = 0; x < 7; ++x)
@@ -186,18 +171,18 @@ void PianoPlayer::OnAwake()
     // write black tones
     for(x = 0; x < NotesBlackNum; ++x)
     {
-        notes[x + NotesWhiteNum].render->setSprite(spr_black);
+        notes[x + NotesWhiteNum].render->setSprite(spriteBlack);
         notes[x + NotesWhiteNum].render->transform()->layer(LAYER_NOTES + 1);
-        notes[x + NotesWhiteNum].normal = spr_black;
-        notes[x + NotesWhiteNum].hover = spr_black_hover;
+        notes[x + NotesWhiteNum].normal = spriteBlack;
+        notes[x + NotesWhiteNum].hover = spriteBlackHover;
     }
 
     // write white tones
     for(x = 0, y = NotesWhiteNum; x < NotesWhiteNum; ++x)
     {
-        notes[x].render->setSprite(spr_white);
-        notes[x].normal = spr_white;
-        notes[x].hover = spr_white_hover;
+        notes[x].render->setSprite(spriteWhite);
+        notes[x].normal = spriteWhite;
+        notes[x].hover = spriteWhiteHover;
 
         // set black notes position
         if(piano_key_layout[x % (sizeof(piano_key_layout) / sizeof(piano_key_layout[0]))])
@@ -212,12 +197,12 @@ void PianoPlayer::OnAwake()
 
     // Generate Visual Layer
     SpriteRenderer *visualObject = Primitive::CreateEmptyGameObject()->AddComponent<SpriteRenderer>();
-    visualObject->setSprite(visual_background);
-    visualObject->setColor(Color(Color::white, 128));
+    visualObject->setSprite(spriteVisualBackground);
+    visualObject->setColor(Color::MakeTransparency(Color::white, .6f));
     visualObject->setSize({1, 2});
     vector1 = notes[0].render->transform()->position();
-    vector1.x += visual_background->size().x / 2 - notes[0].render->getSize().x / 2 + 0.25f;
-    vector1.y += visual_background->size().y + notes[0].render->getSize().y - 0.1f;
+    vector1.x += spriteVisualBackground->size().x / 2 - notes[0].render->getSize().x / 2 + 0.25f;
+    vector1.y += spriteVisualBackground->size().y + notes[0].render->getSize().y - 0.1f;
 
     visualObject->transform()->layer(LAYER_VISUALBACK);
     visualObject->transform()->position(vector1);
@@ -237,7 +222,7 @@ void PianoPlayer::OnAwake()
         p1->destroyAfter = false;
         p1->interval = 0.01f;
 
-        p1->setSource(visual_note);
+        p1->setSource(spriteVisualNote);
         p1->setInterpolates(1.3, 0.0, 0.1);
         p1->setSize(Vec2::half / 6);
         p1->setColors(Color(255, 100, 124), Color(255, 100, 124), Color(255, 100, 124, 0));
@@ -256,43 +241,37 @@ void PianoPlayer::OnAwake()
         p2->setSource(Sprite::CreateWhiteSprite());
 
         p2->setSize(Vec2::one * 0.02f);
-        p2->setColors(Color::yellow, Color::yellow, {Color::red, 0});
+        p2->setColors(Color::yellow, Color::yellow, {Color::red, 0u});
         p2->transform()->layer(LAYER_PARTICLES);
 
-        p2->transform()->position(
-            {notes[x].render->transform()->position().x, notes[0].render->transform()->position().y + notes[0].render->getSize().y});
+        p2->transform()->position({notes[x].render->transform()->position().x, notes[0].render->transform()->position().y + notes[0].render->getSize().y});
 
         _particles.emplace_back(p1, p2);
 
-        backNote = Primitive::CreateEmptyGameObject(Vec2 {p1->transform()->position().x, visualObject->transform()->position().y})
-                       ->AddComponent<SpriteRenderer>();
+        backNote = Primitive::CreateEmptyGameObject(Vec2 {p1->transform()->position().x, visualObject->transform()->position().y})->AddComponent<SpriteRenderer>();
         backNote->transform()->layer(LAYER_BACKNOTE);
         backNote->setSize({0.9f, 3.7});
         backNote->setColor({Color::black, 0});
 
-        backNote->setSprite(spr_black);
+        backNote->setSprite(spriteBlack);
         _backDrawNotes.emplace_back(backNote);
     }
 
     // Generate GUI
-    World::self()->GetGUI()->PushLabel("Volume:", Vec2Int::right * 25 + Vec2Int::up * 15);
-    World::self()->GetGUI()->PushSlider(1, Vec2Int::right * 100, OnVolumeChange);
+    World::GetCurrentWorld()->GetGUI()->PushLabel("Volume:", Vec2Int::right * 25 + Vec2Int::up * 15);
+    World::GetCurrentWorld()->GetGUI()->PushSlider(1, Vec2Int::right * 100, OnVolumeChange);
 
-    World::self()->GetGUI()->PushLabel("Transparency:", Vec2Int::right * 46 + Vec2Int::up * 30);
-    World::self()->GetGUI()->PushSlider(1, {100, 20}, OnTransparencyChange);
+    World::GetCurrentWorld()->GetGUI()->PushLabel("Transparency:", Vec2Int::right * 46 + Vec2Int::up * 30);
+    World::GetCurrentWorld()->GetGUI()->PushSlider(1, {100, 20}, OnTransparencyChange);
 
-    World::self()->GetGUI()->PushButton("Begin Record", Vec2Int {500, 24}, OnRecordState);
-    World::self()->GetGUI()->PushButton("P", {740, 24, 24, 30}, OnRecordPlay);
-    World::self()->GetGUI()->PushButton("S", {764, 24, 24, 30}, OnRecordStopPlay);
+    World::GetCurrentWorld()->GetGUI()->PushButton("Begin Record", Vec2Int {500, 24}, OnRecordState);
+    World::GetCurrentWorld()->GetGUI()->PushButton("P", {740, 24, 24, 30}, OnRecordPlay);
+    World::GetCurrentWorld()->GetGUI()->PushButton("S", {764, 24, 24, 30}, OnRecordStopPlay);
 }
 
 void PianoPlayer::OnUpdate()
 {
     Vec2 ms = Camera::ScreenToWorldPoint(Input::GetMousePointf());
-
-    static float a = 0;
-    ++a;
-    Camera::mainCamera()->transform()->angle(a);
 
     // flush
     __stack_records__.clear();
@@ -305,20 +284,21 @@ void PianoPlayer::OnUpdate()
     // Auto playing
     if(playing() && records.size() > 2)
     {
-        float off = playTime() - startPlayback;
+        float currentTimeTrack = playTimer() - startPlayback;
 
-        if(off >= curPlayback)
+        if(currentTimeTrack > curPlayback)
         {
-            // select the next tracks
-            ++track;
-
             // Are looping
+            // TODO: Set custom select state are loop after end play.
             if(track == records.size() - 1)
             {
                 // Replay
-                playRecord();
+                play();
             }
             curPlayback = records.at(track).first;
+
+            // select the next tracks
+            ++track;
         }
     }
 
@@ -348,13 +328,12 @@ void PianoPlayer::OnUpdate()
                 playRecNote = -1;
         }
 
-        if((Input::GetKeyDown(notes[note].keys[0]) || Input::GetKeyDown(notes[note].keys[1])) || mousetouched == note ||
-           playRecNote == note)
+        if((Input::GetKeyDown(notes[note].keys[0]) || Input::GetKeyDown(notes[note].keys[1])) || mousetouched == note || playRecNote == note)
         {
             if(notes[note].close == false)
             {
                 notes[note].render->setSprite(notes[note].hover);
-                notes[note].startPlayTime = playTime();
+                notes[note].startPlayTime = playTimer();
                 notes[note].source->setVolume(1);
                 notes[note].source->Play();
                 notes[note].close = true;
@@ -375,13 +354,13 @@ void PianoPlayer::OnUpdate()
     }
 
     // Effect is tile remove
-    if(!efx)
+    if(!efxRemainder)
     {
         float diff;
         for(int note = 0; note < AllNotes; ++note)
         {
-            diff = playTime() - notes[note].startPlayTime;
-            if(notes[note].startPlayTime > 0 &&  diff > 0.1f)
+            diff = playTimer() - notes[note].startPlayTime;
+            if(notes[note].startPlayTime > 0 && diff > 0.1f)
             {
                 if(notes[note].source->getVolume() == 0)
                 {
@@ -402,13 +381,14 @@ void PianoPlayer::OnUpdate()
     {
         int cmpt = 1;
         // float lastTime = records.at(records.size() - 1).first;
-        curPlayback = playTime() - startPlayback;
+        curPlayback = playTimer() - startPlayback;
 
         if(__stack_records__.size() == records.at(records.size() - 1).second.size())
         {
             /*std::vector*/
-            if constexpr(std::is_same_v<decltype(records), std::vector<int>>) {
-                //cmpt = memcmp(records.at(records.size() - 1).second.data(), __stack_records__.data(), __stack_records__.size());
+            if constexpr(std::is_same_v<decltype(records), std::vector<int>>)
+            {
+                // cmpt = memcmp(records.at(records.size() - 1).second.data(), __stack_records__.data(), __stack_records__.size());
             }
             else
             {
@@ -439,7 +419,15 @@ void PianoPlayer::OnUpdate()
 
 void PianoPlayer::OnGizmos()
 {
-    RenderUtility::DrawTextLegacy((Vec2::left + Vec2::down * 3.4f), "Epic Piano Instrument v1.1 | Running on Ronin Engine (badcast)");
+
+    Vec2 vec1;
+
+    vec1 = Vec2::left + Vec2::down * 3.4f;
+
+    if(legacyFonts)
+        RenderUtility::DrawTextLegacy(vec1, cstrVer);
+    else
+        RenderUtility::DrawTextClassic(vec1, cstrVer);
 
     if(Input::GetMouseDown(MouseButton::MouseRight))
     {
@@ -448,13 +436,14 @@ void PianoPlayer::OnGizmos()
         RenderUtility::SetColor(Color::white);
         RenderUtility::DrawTextLegacy(Vec2::zero, "Reloading...");
         RoninSimulator::ReloadWorld();
+        return;
     }
 
     if(mousetouched != -1)
     {
         RenderUtility::SetColor(Color::white);
         Rectf noteArea = {notes[mousetouched].render->transform()->position(), notes[mousetouched].render->getSprite()->size()};
-        RenderUtility::DrawRectangle(noteArea.GetXY(), noteArea.w, noteArea.h);
+        RenderUtility::DrawRectangle(noteArea.getXY(), noteArea.w, noteArea.h);
     }
 
     Vec2 p;
@@ -462,8 +451,22 @@ void PianoPlayer::OnGizmos()
     {
         p = notes[n].render->transform()->position();
         p.x -= 0.05f;
-        p.y -= 0.2f;
-        RenderUtility::DrawTextLegacy(p, notes[n].noteName, n < NotesWhiteNum ? true : notes[n].close);
+        if(notes[n].close)
+            p.y -= 0.25f;
+        else
+            p.y -= 0.2f;
+
+        if(legacyFonts)
+            RenderUtility::DrawTextLegacy(p, notes[n].noteName, n < NotesWhiteNum ? true : notes[n].close);
+        else
+        {
+            if(n < NotesWhiteNum || notes[n].close)
+                RenderUtility::SetColor(Color::red);
+            else
+                RenderUtility::SetColor(Color::gray);
+
+            RenderUtility::DrawTextClassic(p, notes[n].noteName);
+        }
     }
 }
 
@@ -479,9 +482,10 @@ bool PianoPlayer::playing() const
 
 void PianoPlayer::beginRecord()
 {
-    clearRecord();
-    startPlayback = playTime();
+    clear();
+    startPlayback = playTimer();
     records.emplace_back(std::move(std::make_pair(0.f, std::move(std::set<int> {}))));
+    Debug::Log("Begin Record");
 }
 
 void PianoPlayer::endRecord()
@@ -489,26 +493,106 @@ void PianoPlayer::endRecord()
     if(recording())
     {
         records.emplace_back(std::move(std::make_pair(-1.f, std::move(std::set<int> {}))));
-        stopPlay();
+        stop();
+    }
+    Debug::Log("End Record");
+}
+
+float PianoPlayer::duration()
+{
+    float t = static_cast<float>(length());
+
+    if(t != -1.0f)
+    {
+        t = 0;
+        for(int i = 0; i < records.size(); ++i)
+        {
+            t += records[i].first;
+        }
+    }
+
+    return t;
+}
+
+float PianoPlayer::currentDuration()
+{
+    float t = static_cast<float>(length());
+
+    if(t != -1.0f)
+    {
+        t = 0;
+        for(int i = 0; i < track && i < records.size(); ++i)
+        {
+            t += records[i].first;
+        }
+    }
+
+    return t;
+}
+
+void PianoPlayer::setDuration(float value)
+{
+    if(value < 0 || length() != -1)
+        return;
+    int i;
+    float t = 0;
+    for(i = 0; i < records.size(); ++i)
+    {
+        t += records[i].first;
+
+        if(t >= value)
+        {
+            track = i;
+            break;
+        }
     }
 }
 
-void PianoPlayer::clearRecord()
+int PianoPlayer::length()
 {
-    stopPlay();
+    if(recording())
+        return -1;
+
+    return records.size();
+}
+
+int PianoPlayer::peek()
+{
+    return track;
+}
+
+bool PianoPlayer::seek(int pos)
+{
+    if(recording() || pos < 0 || pos > records.size() - 1)
+        return false;
+
+    track = pos;
+
+    return true;
+}
+
+void PianoPlayer::clear()
+{
+    stop();
     records.clear();
+    Debug::Log("Clear");
 }
 
-void PianoPlayer::setEfx(bool value)
+void PianoPlayer::efxToggleRemainder(bool value)
 {
-    efx = value;
+    efxRemainder = value == true;
 }
 
-bool PianoPlayer::playRecord()
+void PianoPlayer::drawLegacyFont(bool value)
+{
+    legacyFonts = value == true;
+}
+
+bool PianoPlayer::play()
 {
     if(!records.empty() && !recording())
     {
-        startPlayback = playTime();
+        startPlayback = playTimer();
         track = 0;         // start play
         curPlayback = 0.0; // reset time
         return true;
@@ -517,7 +601,7 @@ bool PianoPlayer::playRecord()
     return false;
 }
 
-void PianoPlayer::stopPlay()
+void PianoPlayer::stop()
 {
     track = -1;
     startPlayback = 0;
