@@ -502,13 +502,9 @@ float PianoPlayer::duration()
 {
     float t = static_cast<float>(length());
 
-    if(t != -1.0f)
+    if(t != -1.0f && t > 0)
     {
-        t = 0;
-        for(int i = 0; i < records.size(); ++i)
-        {
-            t += records[i].first;
-        }
+        t = records[records.size() - 2].first;
     }
 
     return t;
@@ -516,18 +512,7 @@ float PianoPlayer::duration()
 
 float PianoPlayer::currentDuration()
 {
-    float t = static_cast<float>(length());
-
-    if(t != -1.0f)
-    {
-        t = 0;
-        for(int i = 0; i < track && i < records.size(); ++i)
-        {
-            t += records[i].first;
-        }
-    }
-
-    return t;
+    return playTimer() - startPlayback;
 }
 
 void PianoPlayer::setDuration(float value)
@@ -535,12 +520,9 @@ void PianoPlayer::setDuration(float value)
     if(value < 0 || length() != -1)
         return;
     int i;
-    float t = 0;
     for(i = 0; i < records.size(); ++i)
     {
-        t += records[i].first;
-
-        if(t >= value)
+        if(records[i].first >= value)
         {
             track = i;
             break;
@@ -553,7 +535,7 @@ int PianoPlayer::length()
     if(recording())
         return -1;
 
-    return records.size();
+    return records.size()-1;
 }
 
 int PianoPlayer::peek()
