@@ -6,7 +6,7 @@ PianoWorld::PianoWorld() : World("World Piano")
 
 void inputPos(UI::uid, float newValue)
 {
-    PianoWorld * pworld = static_cast<PianoWorld*>(World::GetCurrentWorld());
+    PianoWorld *pworld = static_cast<PianoWorld *>(World::GetCurrentWorld());
     pworld->piano->seek(Math::Number(newValue * pworld->piano->length()));
 }
 
@@ -28,10 +28,12 @@ void PianoWorld::OnUpdate()
     GetGUI()->ElementSetVisible(sliderPosTrack, (piano->length() > 0));
     if(GetGUI()->ElementGetVisible(sliderPosTrack) && piano->playing())
     {
-        float track = Math::Clamp01(Math::Map<int, float>(piano->peek(), 0, piano->length(), 0.f, 1.f));
+        float dur = piano->duration();
+        float curDur = piano->currentDuration();
 
-        GetGUI()->SliderSetValue(sliderPosTrack, track);
-        track = GetGUI()->SliderGetValue(sliderPosTrack);
+        dur = curDur / dur;
+
+        GetGUI()->SliderSetValue(sliderPosTrack, dur);
     }
 
     ivstars.play();

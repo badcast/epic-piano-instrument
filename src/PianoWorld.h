@@ -15,6 +15,7 @@ struct PianoNote
     KeyboardCode keys[2];
     AudioSource *source;
     SpriteRenderer *render;
+    SpriteRenderer *renderCorner;
     const char *noteName;
     float startPlayTime;
 
@@ -26,8 +27,8 @@ class PianoPlayer : public Behaviour
 {
 protected:
     int track;
-    bool efxRemainder;
-    bool legacyFonts;
+    bool paramEFXRemainder;
+    bool paramLegacyFonts;
     float startPlayback;
     float curPlayback;
     std::vector<std::pair<float, std::set<int>>> records {};
@@ -41,6 +42,7 @@ public:
     Sprite *spriteWhiteHover;
     Sprite *spriteVisualNote;
     Sprite *spriteVisualBackground;
+    Sprite *spriteCorner;
 
     PianoPlayer();
 

@@ -38,6 +38,10 @@ const float playTimer()
     return Time::startUpTime();
 }
 
+////////////////////////
+//////// EVENTS ////////
+////////////////////////
+
 void OnTransparencyChange(UI::uid id, float newValue)
 {
     for(int x = 0; x < AllNotes; ++x)
@@ -84,6 +88,10 @@ void OnRecordStopPlay(UI::uid)
     playerInstance->stop();
 }
 
+///////////////////////
+//////// INITS ////////
+///////////////////////
+
 PianoPlayer::PianoPlayer() : Behaviour("Piano Player")
 {
 }
@@ -101,6 +109,7 @@ void PianoPlayer::OnAwake()
     int x, y;
     char buffer[64];
     const char ext[] = ".ogg";
+
     playerInstance = this;
     std::string notesDir {std::move(GetDataDir() += "/sounds/")};
 
@@ -118,6 +127,8 @@ void PianoPlayer::OnAwake()
     }
 
     spriteVisualNote = Sprite::CreateWhiteSprite();
+    spriteCorner =  Primitive::CreateSpriteFrom(Resources::LoadImage(GetDataDir() + "/corner.png", true));
+
 
     __stack_records__.clear();
     clear();
@@ -354,7 +365,7 @@ void PianoPlayer::OnUpdate()
     }
 
     // Effect is tile remove
-    if(!efxRemainder)
+    if(!paramEFXRemainder)
     {
         float diff;
         for(int note = 0; note < AllNotes; ++note)
@@ -424,7 +435,7 @@ void PianoPlayer::OnGizmos()
 
     vec1 = Vec2::left + Vec2::down * 3.4f;
 
-    if(legacyFonts)
+    if(paramLegacyFonts)
         RenderUtility::DrawTextLegacy(vec1, cstrVer);
     else
         RenderUtility::DrawTextClassic(vec1, cstrVer);
@@ -456,7 +467,7 @@ void PianoPlayer::OnGizmos()
         else
             p.y -= 0.2f;
 
-        if(legacyFonts)
+        if(paramLegacyFonts)
             RenderUtility::DrawTextLegacy(p, notes[n].noteName, n < NotesWhiteNum ? true : notes[n].close);
         else
         {
@@ -502,13 +513,9 @@ float PianoPlayer::duration()
 {
     float t = static_cast<float>(length());
 
-    if(t != -1.0f)
+    if(t != -1.0f && t > 0)
     {
-        t = 0;
-        for(int i = 0; i < records.size(); ++i)
-        {
-            t += records[i].first;
-        }
+        t = records[records.size() - 2].first;
     }
 
     return t;
@@ -516,18 +523,7 @@ float PianoPlayer::duration()
 
 float PianoPlayer::currentDuration()
 {
-    float t = static_cast<float>(length());
-
-    if(t != -1.0f)
-    {
-        t = 0;
-        for(int i = 0; i < track && i < records.size(); ++i)
-        {
-            t += records[i].first;
-        }
-    }
-
-    return t;
+    return playTimer() - startPlayback;
 }
 
 void PianoPlayer::setDuration(float value)
@@ -535,12 +531,9 @@ void PianoPlayer::setDuration(float value)
     if(value < 0 || length() != -1)
         return;
     int i;
-    float t = 0;
     for(i = 0; i < records.size(); ++i)
     {
-        t += records[i].first;
-
-        if(t >= value)
+        if(records[i].first >= value)
         {
             track = i;
             break;
@@ -553,7 +546,7 @@ int PianoPlayer::length()
     if(recording())
         return -1;
 
-    return records.size();
+    return records.size()-1;
 }
 
 int PianoPlayer::peek()
@@ -580,12 +573,12 @@ void PianoPlayer::clear()
 
 void PianoPlayer::efxToggleRemainder(bool value)
 {
-    efxRemainder = value == true;
+    paramEFXRemainder = value;
 }
 
 void PianoPlayer::drawLegacyFont(bool value)
 {
-    legacyFonts = value == true;
+    paramLegacyFonts = value;
 }
 
 bool PianoPlayer::play()
