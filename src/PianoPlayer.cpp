@@ -38,6 +38,10 @@ const float playTimer()
     return Time::startUpTime();
 }
 
+////////////////////////
+//////// EVENTS ////////
+////////////////////////
+
 void OnTransparencyChange(UI::uid id, float newValue)
 {
     for(int x = 0; x < AllNotes; ++x)
@@ -84,6 +88,10 @@ void OnRecordStopPlay(UI::uid)
     playerInstance->stop();
 }
 
+///////////////////////
+//////// INITS ////////
+///////////////////////
+
 PianoPlayer::PianoPlayer() : Behaviour("Piano Player")
 {
 }
@@ -101,6 +109,7 @@ void PianoPlayer::OnAwake()
     int x, y;
     char buffer[64];
     const char ext[] = ".ogg";
+
     playerInstance = this;
     std::string notesDir {std::move(GetDataDir() += "/sounds/")};
 
@@ -118,6 +127,8 @@ void PianoPlayer::OnAwake()
     }
 
     spriteVisualNote = Sprite::CreateWhiteSprite();
+    spriteCorner =  Primitive::CreateSpriteFrom(Resources::LoadImage(GetDataDir() + "/corner.png", true));
+
 
     __stack_records__.clear();
     clear();
@@ -354,7 +365,7 @@ void PianoPlayer::OnUpdate()
     }
 
     // Effect is tile remove
-    if(!efxRemainder)
+    if(!paramEFXRemainder)
     {
         float diff;
         for(int note = 0; note < AllNotes; ++note)
@@ -424,7 +435,7 @@ void PianoPlayer::OnGizmos()
 
     vec1 = Vec2::left + Vec2::down * 3.4f;
 
-    if(legacyFonts)
+    if(paramLegacyFonts)
         RenderUtility::DrawTextLegacy(vec1, cstrVer);
     else
         RenderUtility::DrawTextClassic(vec1, cstrVer);
@@ -456,7 +467,7 @@ void PianoPlayer::OnGizmos()
         else
             p.y -= 0.2f;
 
-        if(legacyFonts)
+        if(paramLegacyFonts)
             RenderUtility::DrawTextLegacy(p, notes[n].noteName, n < NotesWhiteNum ? true : notes[n].close);
         else
         {
@@ -562,12 +573,12 @@ void PianoPlayer::clear()
 
 void PianoPlayer::efxToggleRemainder(bool value)
 {
-    efxRemainder = value == true;
+    paramEFXRemainder = value;
 }
 
 void PianoPlayer::drawLegacyFont(bool value)
 {
-    legacyFonts = value == true;
+    paramLegacyFonts = value;
 }
 
 bool PianoPlayer::play()
