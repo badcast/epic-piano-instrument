@@ -127,7 +127,7 @@ void PianoPlayer::OnAwake()
     }
 
     spriteVisualNote = Sprite::CreateWhiteSprite();
-    spriteCorner =  Primitive::CreateSpriteFrom(Resources::LoadImage(GetDataDir() + "/corner.png", true));
+    spriteCorner =  Primitive::CreateSpriteFrom(Resources::LoadImageRight(GetDataDir() + "/corner.png", true));
 
 
     __stack_records__.clear();
