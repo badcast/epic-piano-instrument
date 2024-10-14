@@ -1,5 +1,28 @@
 #include "IVStars.hpp"
-#include <ronin/framework.h>
+
+Vec2 calculateFinalPoint(Vec2 start, Vec2 direction, Vec2 alphaPoint, Vec2 betaPoint) {
+    direction.normalize();
+
+    float tLeft = (alphaPoint.x - start.x) / -direction.x;
+    float tRight = (betaPoint.x - start.x) / -direction.x;
+    float tBottom = (alphaPoint.y - start.y) / -direction.y;
+    float tTop = (betaPoint.y - start.y) / -direction.y;
+
+    // Находим минимальное положительное значение t :)
+    float tCollision = std::numeric_limits<float>::max();
+
+    if (tLeft > 0) tCollision = Math::Min(tCollision, tLeft);
+    if (tRight > 0) tCollision = Math::Min(tCollision, tRight);
+    if (tBottom > 0) tCollision = Math::Min(tCollision, tBottom);
+    if (tTop > 0) tCollision = Math::Min(tCollision, tTop);
+
+    Vec2 initialPoint;
+    initialPoint.x = start.x - tCollision * direction.x;
+    initialPoint.y = start.y - tCollision * direction.y;
+
+    return initialPoint;
+}
+
 
 IVStars::IVStars() : _dir(Vec2::up_right), _speed(2.0f), _stars {}
 {
@@ -16,48 +39,43 @@ void IVStars::set(Vec2 direction, float speed, int count, bool startOfScreen)
     if(speed <= 0)
         return;
 
-    _dir = direction.normalized();
+    area.setXY(Camera::ViewportToWorldPoint(Vec2::zero));
+    area.setWH(Camera::ViewportToWorldPoint(Vec2::one) - area.getXY());
+    _dir = direction;
     _speed = speed;
 
-    clear();
+    IVObj iv;
+
     for(; count--;)
     {
-        Vec2 newPoint = Camera::ViewportToWorldPoint(Random::RandomVector());
+        Vec2 newPoint = Camera::ViewportToWorldPoint(Vec2( Random::Value(), Random::Value()));
 
-        _stars.emplace_back(Primitive::CreateBox2D(newPoint)->spriteRenderer());
-        _stars.back()->setColor(Color::MakeTransparency(Color::white, .6f));
-        _stars.back()->setSize(Vec2::one / 70);
+        iv.obj = Primitive::CreateBox2D(newPoint)->transform();
+        iv.obj->spriteRenderer()->setSize(Vec2::one / 60);
+        iv.orig = calculateFinalPoint(iv.obj->position(), _dir, area.getXY(), area.getWH());
+        _stars.emplace_back(iv);
     }
 }
 
 void IVStars::clear()
 {
-    std::for_each(_stars.begin(), _stars.end(), [](SpriteRenderer *target) { target->gameObject()->Destroy(); });
+    std::for_each(_stars.begin(), _stars.end(), [](IVObj const &target) { target.obj->gameObject()->Destroy(); });
     _stars.clear();
 }
 
-
-
-void IVStars::play()
+void IVStars::pull()
 {
-    Rectf area;
     Vec2 point;
 
-    area.setXY(Camera::ViewportToWorldPoint(Vec2::zero));
-    area.setWH(Camera::ViewportToWorldPoint(Vec2::one)-area.getXY());
-
-    for(SpriteRenderer *self : _stars)
+    for(IVObj &self : _stars)
     {
-        self->transform()->Translate(_dir * Time::deltaTime() * _speed);
+        self.obj->Translate(_dir * Time::deltaTime() * _speed);
 
-        point = self->transform()->position();
+        point = self.obj->position();
 
         if(!Vec2::HasIntersection(point, area))
         {
-            //TODO: сделать так, чтобы point был установлен начальный -_dir позиция стартовой точки.
-            //point = closestPointOnBorder(point, area, _dir);
-            //self->transform()->position(point);
-            self->transform()->position(Camera::ViewportToWorldPoint(Vec2::Abs(Random::RandomVector())));
+            self.obj->position(self.orig);
         }
     }
 }
