@@ -31,9 +31,13 @@ protected:
     bool paramLegacyFonts;
     float startPlayback;
     float curPlayback;
+    float standbyAfter;
+    float standbyTickOut;
     std::vector<std::pair<float, std::set<int>>> records {};
     std::vector<std::pair<ParticleSystem *, ParticleSystem *>> _particles;
     std::vector<SpriteRenderer *> _backDrawNotes;
+
+    void onStandBy();
 
 public:
     Sprite *spriteBlack;
@@ -68,7 +72,7 @@ public:
     void efxToggleRemainder(bool value);
     void drawLegacyFont(bool value);
 
-    // TODO: Make save and load records from/to filename
+    // TODO: Make save/load records from/to filename
     void loadFromStream(const std::istream &in);
     void saveToStream(std::ostream &out);
 };

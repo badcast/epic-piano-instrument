@@ -6,19 +6,26 @@
 using namespace RoninEngine;
 using namespace RoninEngine::Runtime;
 
+struct IVObj
+{
+    Vec2 orig;
+    Transform *obj;
+};
+
 class IVStars
 {
 private:
     float _speed;
     Vec2 _dir;
-    std::list<SpriteRenderer *> _stars;
+    Rectf area;
+    std::list<IVObj> _stars;
 
 public:
     IVStars();
 
     void set(Vec2 direction, float speed, int count, bool startOfScreen);
     void clear();
-    void play();
+    void pull();
 };
 
 #endif

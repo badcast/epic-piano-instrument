@@ -88,13 +88,13 @@ void OnRecordStopPlay(UI::uid)
     playerInstance->stop();
 }
 
-///////////////////////
-//////// INITS ////////
-///////////////////////
-
 PianoPlayer::PianoPlayer() : Behaviour("Piano Player")
 {
 }
+
+///////////////////////
+//////// INITS ////////
+///////////////////////
 
 void PianoPlayer::OnAwake()
 {
@@ -110,6 +110,9 @@ void PianoPlayer::OnAwake()
     char buffer[64];
     const char ext[] = ".ogg";
 
+    standbyAfter = 5.0f;
+    standbyTickOut = 0.0f;
+
     playerInstance = this;
     std::string notesDir {std::move(GetDataDir() += "/sounds/")};
 
@@ -123,11 +126,11 @@ void PianoPlayer::OnAwake()
 
     if((spriteVisualBackground = Primitive::CreateSpriteFrom(Resources::GetImageSource(Resources::LoadImage(GetDataDir() + "/layer.png", true)), true)) == nullptr)
     {
-        RoninSimulator::Log("Visual sprite is no loaded");
+        Debug::Log("Visual sprite is no loaded");
     }
 
     spriteVisualNote = Sprite::CreateWhiteSprite();
-    spriteCorner =  Primitive::CreateSpriteFrom(Resources::LoadImage(GetDataDir() + "/corner.png", true));
+    spriteCorner =  Primitive::CreateSpriteFrom(Resources::LoadImageRight(GetDataDir() + "/corner.png", true));
 
 
     __stack_records__.clear();
@@ -138,13 +141,13 @@ void PianoPlayer::OnAwake()
     {
         snprintf(buffer, sizeof(buffer), "C-%d", 6 - x);
         notes[x].name = buffer;
-        std::memcpy(notes[x].keys, piano_key_keyboard_white_keys[x], sizeof(notes[x].keys));
+        std::memcpy(notes[x].keys, shortcutWhiteKeys[x], sizeof(notes[x].keys));
     }
     for(; x < 17; ++x)
     {
         snprintf(buffer, sizeof(buffer), "C+%d", x - 7);
         notes[x].name = buffer;
-        std::memcpy(notes[x].keys, piano_key_keyboard_white_keys[x], sizeof(notes[x].keys));
+        std::memcpy(notes[x].keys, shortcutWhiteKeys[x], sizeof(notes[x].keys));
     }
 
     // Setting Black notes
@@ -152,7 +155,7 @@ void PianoPlayer::OnAwake()
     {
         snprintf(buffer, sizeof(buffer), "F+%d", x);
         notes[x + NotesWhiteNum].name = buffer;
-        notes[x + NotesWhiteNum].keys[0] = piano_key_keyboard_black_keys[x];
+        notes[x + NotesWhiteNum].keys[0] = shortcutBlackKeys[x];
         // notes[x + NotesWhiteNum].keys[1] = KEY_NONE;
     }
 
@@ -196,7 +199,7 @@ void PianoPlayer::OnAwake()
         notes[x].hover = spriteWhiteHover;
 
         // set black notes position
-        if(piano_key_layout[x % (sizeof(piano_key_layout) / sizeof(piano_key_layout[0]))])
+        if(keyLayouts[x % (sizeof(keyLayouts) / sizeof(keyLayouts[0]))])
         {
             offset_left = notes[x].render->transform()->position();
             offset_left.x -= vector1.x / 2;
@@ -282,6 +285,8 @@ void PianoPlayer::OnAwake()
 
 void PianoPlayer::OnUpdate()
 {
+    int standing = 0;
+
     Vec2 ms = Camera::ScreenToWorldPoint(Input::GetMousePointf());
 
     // flush
@@ -290,7 +295,9 @@ void PianoPlayer::OnUpdate()
     mousetouched = -1;
 
     if(Input::GetKeyUp(KeyboardCode::KB_ESCAPE))
+    {
         RoninSimulator::RequestQuit();
+    }
 
     // Auto playing
     if(playing() && records.size() > 2)
@@ -355,6 +362,8 @@ void PianoPlayer::OnUpdate()
             _particles[note].first->emit = true;
             _particles[note].second->emit = true;
             _backDrawNotes[note]->setColor({Color::black, 127});
+
+             standing|=1;
         }
         else if(Input::GetKeyUp(notes[note].keys[0]) || Input::GetKeyUp(notes[note].keys[1]) || mousetouched != note)
         {
@@ -426,6 +435,28 @@ void PianoPlayer::OnUpdate()
             // Record
             records.emplace_back(std::move(std::make_pair<float, std::set<int>>(float(curPlayback), std::move(__stack_records__))));
     }
+
+
+    if(standing == 0)
+    {
+        if(standbyTickOut == 0.0f)
+        {
+            standbyTickOut = Time::time();
+        }
+        else if(standbyTickOut != -1.0f)
+        {
+            if((Time::time()-standbyTickOut) >= standbyAfter)
+            {
+                // StandBy now
+                onStandBy();
+                standbyTickOut=-1.0f;
+            }
+        }
+    }
+    else
+    {
+        standbyTickOut = 0.0f;
+    }
 }
 
 void PianoPlayer::OnGizmos()
@@ -478,6 +509,15 @@ void PianoPlayer::OnGizmos()
 
             RenderUtility::DrawTextClassic(p, notes[n].noteName);
         }
+    }
+}
+
+void PianoPlayer::onStandBy()
+{
+    for( int x = 0; x < _particles.size(); ++x)
+    {
+        _particles[x].first->Reset();
+        _particles[x].second->Reset();
     }
 }
 

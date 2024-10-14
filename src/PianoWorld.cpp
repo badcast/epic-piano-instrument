@@ -36,7 +36,7 @@ void PianoWorld::OnUpdate()
         GetGUI()->SliderSetValue(sliderPosTrack, dur);
     }
 
-    ivstars.play();
+    ivstars.pull();
 }
 
 void PianoWorld::OnUnloading()
