@@ -1,7 +1,10 @@
 #ifndef _OTHER_OBJECTS_HPP_
 #define _OTHER_OBJECTS_HPP_
 
-#include "SpaceDepends.hpp"
+#include <ronin/framework.h>
+
+using namespace RoninEngine;
+using namespace RoninEngine::Runtime;
 
 struct IVObj
 {

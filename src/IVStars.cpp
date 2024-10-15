@@ -1,14 +1,14 @@
 #include "IVStars.hpp"
 
-Vec2 calculateFinalPoint(Vec2 start, Vec2 direction, Vec2 rectMin, Vec2 rectMax) {
+Vec2 calculateFinalPoint(Vec2 start, Vec2 direction, Vec2 alphaPoint, Vec2 betaPoint) {
     // Нормализуем вектор направления
     direction.normalize();
 
     // Параметры времени для пересечения с границами
-    float tLeft = (rectMin.x - start.x) / -direction.x; // Движемся в сторону X=0
-    float tRight = (rectMax.x - start.x) / -direction.x;
-    float tBottom = (rectMin.y - start.y) / -direction.y;
-    float tTop = (rectMax.y - start.y) / -direction.y;
+    float tLeft = (alphaPoint.x - start.x) / -direction.x; // Движемся в сторону X=0
+    float tRight = (betaPoint.x - start.x) / -direction.x;
+    float tBottom = (alphaPoint.y - start.y) / -direction.y;
+    float tTop = (betaPoint.y - start.y) / -direction.y;
 
     // Находим минимальное положительное значение t :)
     float tCollision = std::numeric_limits<float>::max();
@@ -80,9 +80,5 @@ void IVStars::play()
         {
             self.obj->position(self.orig);
         }
-
-        RenderUtility::SetColor(Color::white);
-        RenderUtility::DrawLine(self.orig, self.obj->position());
-
     }
 }
