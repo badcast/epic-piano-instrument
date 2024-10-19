@@ -126,7 +126,7 @@ void PianoPlayer::OnAwake()
 
     if((spriteVisualBackground = Primitive::CreateSpriteFrom(Resources::GetImageSource(Resources::LoadImage(GetDataDir() + "/layer.png", true)), true)) == nullptr)
     {
-        RoninSimulator::Log("Visual sprite is no loaded");
+        Debug::Log("Visual sprite is no loaded");
     }
 
     spriteVisualNote = Sprite::CreateWhiteSprite();
