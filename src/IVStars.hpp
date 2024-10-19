@@ -25,7 +25,7 @@ public:
 
     void set(Vec2 direction, float speed, int count, bool startOfScreen);
     void clear();
-    void play();
+    void pull();
 };
 
 #endif

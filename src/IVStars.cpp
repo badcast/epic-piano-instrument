@@ -1,11 +1,9 @@
 #include "IVStars.hpp"
 
 Vec2 calculateFinalPoint(Vec2 start, Vec2 direction, Vec2 alphaPoint, Vec2 betaPoint) {
-    // Нормализуем вектор направления
     direction.normalize();
 
-    // Параметры времени для пересечения с границами
-    float tLeft = (alphaPoint.x - start.x) / -direction.x; // Движемся в сторону X=0
+    float tLeft = (alphaPoint.x - start.x) / -direction.x;
     float tRight = (betaPoint.x - start.x) / -direction.x;
     float tBottom = (alphaPoint.y - start.y) / -direction.y;
     float tTop = (betaPoint.y - start.y) / -direction.y;
@@ -18,7 +16,6 @@ Vec2 calculateFinalPoint(Vec2 start, Vec2 direction, Vec2 alphaPoint, Vec2 betaP
     if (tBottom > 0) tCollision = Math::Min(tCollision, tBottom);
     if (tTop > 0) tCollision = Math::Min(tCollision, tTop);
 
-    // Вычисляем начальную точку
     Vec2 initialPoint;
     initialPoint.x = start.x - tCollision * direction.x;
     initialPoint.y = start.y - tCollision * direction.y;
@@ -44,7 +41,7 @@ void IVStars::set(Vec2 direction, float speed, int count, bool startOfScreen)
 
     area.setXY(Camera::ViewportToWorldPoint(Vec2::zero));
     area.setWH(Camera::ViewportToWorldPoint(Vec2::one) - area.getXY());
-    _dir = direction.normalized();
+    _dir = direction;
     _speed = speed;
 
     IVObj iv;
@@ -66,7 +63,7 @@ void IVStars::clear()
     _stars.clear();
 }
 
-void IVStars::play()
+void IVStars::pull()
 {
     Vec2 point;
 
