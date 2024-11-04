@@ -39,19 +39,21 @@ get_target_property(OUTPUT_NAME PianoInstrument OUTPUT_NAME)
 
 # INSTALLS
 
-include(GNUInstallDirs)
+if(LINUX
+   AND (CMAKE_BUILD_TYPE STREQUAL "Release"
+        OR CMAKE_BUILD_TYPE STREQUAL "MinSizeRel"
+        OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"))
 
-if(CMAKE_BUILD_TYPE STREQUAL "Release"
-   OR CMAKE_BUILD_TYPE STREQUAL "MinSizeRel"
-   OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+  include(GNUInstallDirs)
 
-  set(EPIC_PIANO_DATA_DIR ${CMAKE_INSTALL_PREFIX}/share/${OUTPUT_NAME})
+  set(EPICPIANO_DATA_DIRECTORY ${CMAKE_INSTALL_PREFIX}/share/${OUTPUT_NAME})
 
-  target_compile_definitions(PianoInstrument
-                             PUBLIC DATA_NOTES_DIR="${EPIC_PIANO_DATA_DIR}")
+  target_compile_definitions(
+    PianoInstrument
+    PRIVATE EPICPIANO_DATA_DIRECTORY="${EPICPIANO_DATA_DIRECTORY}")
 
   install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/resources/data/
-          DESTINATION ${EPIC_PIANO_DATA_DIR})
+          DESTINATION ${EPICPIANO_DATA_DIRECTORY})
 
   install(FILES "${CMAKE_BINARY_DIR}/bin/${OUTPUT_NAME}"
           DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")

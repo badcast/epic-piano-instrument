@@ -1,14 +1,13 @@
 #include "IVStars.hpp"
 
-Vec2 calculateFinalPoint(Vec2 start, Vec2 direction, Vec2 alphaPoint, Vec2 betaPoint) {
+Vec2 calculateFinalPoint(Vec2 start, Vec2 direction, Vec2 XY, Vec2 WH) {
     direction.normalize();
 
-    float tLeft = (alphaPoint.x - start.x) / -direction.x;
-    float tRight = (betaPoint.x - start.x) / -direction.x;
-    float tBottom = (alphaPoint.y - start.y) / -direction.y;
-    float tTop = (betaPoint.y - start.y) / -direction.y;
+    float tLeft = (XY.x - start.x) / -direction.x;
+    float tRight = (WH.x - start.x) / -direction.x;
+    float tBottom = (XY.y - start.y) / -direction.y;
+    float tTop = (WH.y - start.y) / -direction.y;
 
-    // Находим минимальное положительное значение t :)
     float tCollision = std::numeric_limits<float>::max();
 
     if (tLeft > 0) tCollision = Math::Min(tCollision, tLeft);
@@ -22,7 +21,6 @@ Vec2 calculateFinalPoint(Vec2 start, Vec2 direction, Vec2 alphaPoint, Vec2 betaP
 
     return initialPoint;
 }
-
 
 IVStars::IVStars() : _dir(Vec2::up_right), _speed(2.0f), _stars {}
 {

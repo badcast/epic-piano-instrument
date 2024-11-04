@@ -1,9 +1,12 @@
-#include <exception>
 #include <iostream>
+#include <exception>
 
 #include "PianoWorld.h"
 
 using namespace std;
+
+AssetRef globalAsset = nullptr;
+
 #if WIN32
 int WinMain(void *, void *, void *, int)
 #else
@@ -12,44 +15,29 @@ int main()
 {
     RoninSimulator::Init();
 
-    PianoWorld world;
-    std::string keyName;
-
-    keyName = Input::GetKeyName(KeyboardCode::KB_UNKNOWN+1);
-    if(keyName != "None")
-        cout << ("Test 1 fail") << endl;
-
-    keyName = Input::GetKeyName(KeyboardCode::KB_KP_DIVIDE);
-    if(keyName != "Divide")
-        cout << ("Test 2 fail") << endl;
-
-    keyName = Input::GetKeyName(KeyboardCode::KB_KP_PERIOD);
-    if(keyName != "Period")
-        cout << ("Test 3 fail") << endl;
-
-    keyName = Input::GetKeyName((KeyboardCode::KB_LCTRL - 1));
-    if(keyName != "None")
-        cout << ("Test 4 fail") << endl;
-
-    keyName = Input::GetKeyName(KeyboardCode::KB_LCTRL);
-    if(keyName != "LCtrl")
-        cout << ("Test 5 fail") << endl;
-
-    keyName = Input::GetKeyName(KeyboardCode::KB_RGUI);
-    if(keyName != "RGUI")
-        cout << ("Test 6 fail") << endl;
-
-    Resolution resolution {1024, 768};
+    Resolution resolution {1024, 600};
     RoninSimulator::Show(resolution, false);
 
-    RoninSimulator::SetDebugMode(true);
+    RoninSimulator::SetDebugMode(false);
 
-    if(RoninSimulator::LoadWorld(&world) == true)
+    RoninSettings settings = RoninSettings::GetCurrent();
+    settings.verticalSync = true;
+    settings.textureQuality = RoninSettings::RenderTextureScaleQuality::Nearest;
+    settings.Apply();
+
+    globalAsset =  AssetManager::LoadAsset(GetDataDir() + "/controls.asset");
+    if(!globalAsset)
     {
-        RoninSimulator::Simulate();
+        std::cerr << "Fail load asset file" << std::endl;
     }
-
+    else
+    {
+        if(RoninSimulator::LoadWorldAfterSplash<PianoWorld>() != nullptr)
+        {
+            RoninSimulator::Simulate();
+        }
+        AssetManager::UnloadAsset(globalAsset);
+    }
     RoninSimulator::Finalize();
-
     return 0;
 }

@@ -1,0 +1,43 @@
+{
+  "class": "Atlas",
+  "source": "controls.png",
+  "mode": "Rect",
+  "map": [
+      {
+        "sprite": "button.layer.normal",
+        "value": "1 1 64 65"
+      },
+      {
+        "sprite": "button.layer.hover",
+        "value": "65 1 64 65"
+      },
+      {
+        "sprite": "button.layer.disable",
+        "value": "129 1 64 65"
+      },
+      {
+        "sprite": "player_stop",
+        "value": "1 66 64 65"
+      },
+      {
+        "sprite": "player_record",
+        "value": "65 66 64 65"
+      },
+      {
+        "sprite": "player_play",
+        "value": "129 66 64 65"
+      },
+      {
+        "sprite": "player_unmute",
+        "value": "1 127 64 65"
+      },
+      {
+        "sprite": "player_mute",
+        "value": "65 127 64 65"
+      },
+      {
+        "sprite": "player_efx",
+        "value": "129 127 64 65"
+      }
+  ]
+}
