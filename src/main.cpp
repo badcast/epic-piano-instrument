@@ -30,7 +30,7 @@ int main()
     }
     else
     {
-        if(RoninSimulator::LoadWorld<PianoWorld>() != nullptr)
+        if(RoninSimulator::LoadWorldAfterSplash<PianoWorld>() != nullptr)
         {
             RoninSimulator::Simulate();
         }
