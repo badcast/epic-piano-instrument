@@ -7,6 +7,8 @@
 using namespace RoninEngine;
 using namespace RoninEngine::Runtime;
 
+extern Asset* globalAsset;
+
 struct PianoNote
 {
     bool close;
@@ -27,12 +29,12 @@ class PianoPlayer : public Behaviour
 {
 protected:
     int track;
-    bool paramEFXRemainder;
-    bool paramLegacyFonts;
+
     float startPlayback;
     float curPlayback;
     float standbyAfter;
     float standbyTickOut;
+    const char * hint;
     std::vector<std::pair<float, std::set<int>>> records {};
     std::vector<std::pair<ParticleSystem *, ParticleSystem *>> _particles;
     std::vector<SpriteRenderer *> _backDrawNotes;
@@ -40,6 +42,10 @@ protected:
     void onStandBy();
 
 public:
+    bool paramEFXRemainder;
+    bool paramLegacyFonts;
+    bool paramMute;
+
     Sprite *spriteBlack;
     Sprite *spriteBlackHover;
     Sprite *spriteWhite;
@@ -61,7 +67,8 @@ public:
 
     float duration();
     float currentDuration();
-    void setDuration(float value);
+    void setPosition(float value);
+    void setMute(bool value);
 
     int length();
     int peek();
@@ -69,8 +76,6 @@ public:
     bool play();
     void stop();
     void clear();
-    void efxToggleRemainder(bool value);
-    void drawLegacyFont(bool value);
 
     // TODO: Make save/load records from/to filename
     void loadFromStream(const std::istream &in);
@@ -79,10 +84,17 @@ public:
 
 class PianoWorld : public World
 {
-    IVStars ivstars;
-    UI::uid sliderPosTrack;
-
 public:
+    IVStars ivstars;
+
+    UI::uid sliderPosTrack;
+    UI::uid buttonPlay;
+    UI::uid buttonRec;
+    UI::uid buttonMute;
+    UI::uid buttonEfx;
+
+    Asset* resource;
+
     PianoPlayer *piano;
     PianoWorld();
 
@@ -92,3 +104,6 @@ public:
 
     void OnUnloading();
 };
+
+// Global Function
+std::string GetDataDir();
