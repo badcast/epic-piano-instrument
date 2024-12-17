@@ -78,8 +78,8 @@ public:
     void clear();
 
     // TODO: Make save/load records from/to filename
-    void loadFromStream(const std::istream &in);
-    void saveToStream(std::ostream &out);
+    void importFromStream(const std::istream &in);
+    void exportToStream(std::ostream &out);
 };
 
 class PianoWorld : public World

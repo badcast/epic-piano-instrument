@@ -14,6 +14,8 @@ file(GLOB_RECURSE SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 file(GLOB_RECURSE HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.hpp"
      "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h")
 
+file(READ ${CMAKE_SOURCE_DIR}/VERSION READVER)
+string(REGEX REPLACE "[\n]+" "" READVER ${READVER})
 if(WIN32)
   add_executable(PianoInstrument WIN32 ${HEADERS} ${SOURCES})
 else()
@@ -32,10 +34,14 @@ else()
 endif()
 
 # set the executable name
-set_target_properties(PianoInstrument PROPERTIES OUTPUT_NAME
-                                                 epic-piano-instrument)
+set_target_properties(
+  PianoInstrument PROPERTIES OUTPUT_NAME epic-piano-instrument VERSION
+                                                               ${READVER})
 
 get_target_property(OUTPUT_NAME PianoInstrument OUTPUT_NAME)
+
+target_compile_definitions(PianoInstrument
+                           PUBLIC PIANO_BUILD_VERSION="${READVER}")
 
 # INSTALLS
 
