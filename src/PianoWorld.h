@@ -1,6 +1,7 @@
 #pragma once
 
 #include <set>
+#include <iostream>
 #include <ronin/framework.h>
 #include "IVStars.hpp"
 
@@ -23,6 +24,13 @@ struct PianoNote
 
     SpriteRef normal;
     SpriteRef hover;
+};
+
+struct PianoRecord
+{
+    int version;
+    char header[7];
+    std::uint32_t lens;
 };
 
 class PianoPlayer : public Behaviour
@@ -78,7 +86,7 @@ public:
     void clear();
 
     // TODO: Make save/load records from/to filename
-    void importFromStream(const std::istream &in);
+    void importFromStream(std::istream &in);
     void exportToStream(std::ostream &out);
 };
 
