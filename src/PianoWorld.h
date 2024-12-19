@@ -1,8 +1,10 @@
 #pragma once
 
 #include <set>
+#include <iostream>
 #include <ronin/framework.h>
 #include "IVStars.hpp"
+#include "KeyData.h"
 
 using namespace RoninEngine;
 using namespace RoninEngine::Runtime;
@@ -25,6 +27,13 @@ struct PianoNote
     SpriteRef hover;
 };
 
+struct PianoRecord
+{
+    int version;
+    char header[7];
+    std::uint32_t lens;
+};
+
 class PianoPlayer : public Behaviour
 {
 protected:
@@ -38,6 +47,9 @@ protected:
     std::vector<std::pair<float, std::set<int>>> records {};
     std::vector<std::pair<ParticleSystemRef, ParticleSystemRef>> _particles;
     std::vector<SpriteRendererRef> _backDrawNotes;
+
+    ResId notes_res[AllNotes];
+    PianoNote notes[AllNotes];
 
     void onStandBy();
 
@@ -77,8 +89,7 @@ public:
     void stop();
     void clear();
 
-    // TODO: Make save/load records from/to filename
-    void importFromStream(const std::istream &in);
+    void importFromStream(std::istream &in);
     void exportToStream(std::ostream &out);
 };
 
@@ -107,3 +118,4 @@ public:
 
 // Global Function
 std::string GetDataDir();
+std::uint32_t ComputeCheksums(float time, int sums);

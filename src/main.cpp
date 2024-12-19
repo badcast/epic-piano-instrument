@@ -28,18 +28,21 @@ int main(int argc, char **argv)
     settings.textureQuality = RoninSettings::RenderTextureScaleQuality::Nearest;
     settings.Apply();
 
-    globalAsset = AssetManager::LoadAsset(GetDataDir() + "/controls.asset");
+
+    globalAsset = AssetManager::LoadAsset(GetDataDir() + Paths::GetPathSeperatorOS() + "controls.asset");
+    globalAsset = AssetManager::LoadAsset(GetDataDir() + Paths::GetPathSeperatorOS() + "controls.asset");
     if(!globalAsset)
     {
         std::cerr << "Fail load asset file" << std::endl;
     }
     else
     {
-        if(RoninSimulator::LoadWorldAfterSplash<PianoWorld>() != nullptr)
+        if(RoninSimulator::LoadWorld<PianoWorld>() != nullptr)
         {
             RoninSimulator::Simulate();
         }
         AssetManager::UnloadAsset(globalAsset);
+        globalAsset = nullptr;
     }
     RoninSimulator::Finalize();
     return 0;

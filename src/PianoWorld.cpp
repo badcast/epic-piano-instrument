@@ -1,3 +1,6 @@
+#include <sstream>
+#include <fstream>
+
 #include "PianoWorld.h"
 
 PianoWorld::PianoWorld() : World("World Piano")
@@ -97,6 +100,30 @@ void OnButtonPlay(UI::uid id)
     }
 }
 
+void OnExportMus(UI::uid)
+{
+    std::ostringstream s {};
+    if(!playerInstance)
+        return;
+    playerInstance->exportToStream(s);
+
+    std::ofstream file("/tmp/mus.es");
+    file << s.str();
+    file.close();
+}
+
+void OnImportMus(UI::uid)
+{
+    std::ifstream inp{"/tmp/mus.es"};
+    if(!inp)
+    {
+        RoninSimulator::ShowMessage("Error import music file");
+        return;
+    }
+    playerInstance->importFromStream(inp);
+    inp.close();
+}
+
 void PianoWorld::OnStart()
 {
     // Create camera2d
@@ -126,6 +153,8 @@ void PianoWorld::OnStart()
     GetGUI()->SpriteButtonSetIcon(buttonPlay, globalAsset->GetAtlasObject()->GetSpriteFromName("player_play"));
     GetGUI()->SpriteButtonSetIcon(buttonMute, globalAsset->GetAtlasObject()->GetSpriteFromName("player_unmute"));
     GetGUI()->SpriteButtonSetIcon(buttonEfx, globalAsset->GetAtlasObject()->GetSpriteFromName("player_efx"));
+    GetGUI()->PushButton("Save music", Rect{100,100,100,30}, OnExportMus);
+    GetGUI()->PushButton("Load music", Rect{100,130,100,30}, OnImportMus);
 }
 
 void PianoWorld::OnUpdate()
@@ -146,5 +175,6 @@ void PianoWorld::OnUpdate()
 
 void PianoWorld::OnUnloading()
 {
+    playerInstance = nullptr;
     ivstars.clear();
 }

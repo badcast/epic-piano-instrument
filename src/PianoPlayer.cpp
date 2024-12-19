@@ -8,13 +8,9 @@
 //////// MEMBERS ////////
 /////////////////////////
 
-#include "KeyData.h"
-
 constexpr auto TitleApplication = "Epic Piano Instrument v1.1 | Running on Ronin Engine (badcast)";
 
 int mousetouched;
-ResId notes_res[AllNotes];
-PianoNote notes[AllNotes];
 std::set<int> __stack_records__ {};
 
 ///////////////////////////
@@ -30,6 +26,11 @@ std::string GetDataDir()
     std::string __dataDirectory {EPICPIANO_DATA_DIRECTORY};
 #endif
     return __dataDirectory;
+}
+
+std::uint32_t ComputeCheksums(float time, int sums)
+{
+
 }
 
 const float playTimer()
