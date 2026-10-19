@@ -52,6 +52,7 @@ protected:
     PianoNote notes[AllNotes];
 
     void onStandBy();
+    void drawBackgroundWave();
 
 public:
     bool paramEFXRemainder;

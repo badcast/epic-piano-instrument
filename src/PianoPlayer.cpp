@@ -1,4 +1,6 @@
 #include <cstring>
+#include <cmath>
+#include <algorithm>
 
 #include <ronin/Debug.h>
 
@@ -8,10 +10,12 @@
 //////// MEMBERS ////////
 /////////////////////////
 
-constexpr auto TitleApplication = "Epic Piano Instrument v1.1 | Running on Ronin Engine (badcast)";
+constexpr auto TitleApplication = "Epic Piano Instrument v1.2 | Running on Ronin Engine (badcast)";
 
 int mousetouched;
 std::set<int> __stack_records__ {};
+static ResId baseClipRes = 0;
+static bool baseClipLoaded = false;
 
 ///////////////////////////
 //////// FUNCTIONS ////////
@@ -30,12 +34,20 @@ std::string GetDataDir()
 
 std::uint32_t ComputeCheksums(float time, int sums)
 {
-
+    return 0;
 }
 
 const float playTimer()
 {
     return Time::startUpTime();
+}
+
+// The engine draws by zOrder (layer only partitions the spatial matrix), so set both.
+template<typename T>
+static void SetDrawLayer(T transform, int value)
+{
+    transform->layer(value);
+    transform->zOrder(value);
 }
 
 PianoPlayer::PianoPlayer() : Behaviour("Piano Player")
@@ -108,6 +120,35 @@ void PianoPlayer::OnAwake()
         // notes[x + NotesWhiteNum].keys[1] = KEY_NONE;
     }
 
+    // Precompute semitone offsets for all notes based on standard keyboard layout
+    constexpr int whiteScale[7] = {0, 2, 4, 5, 7, 9, 11};
+    int semitones[AllNotes];
+    for(x = 0; x < NotesWhiteNum; ++x)
+    {
+        semitones[x] = (x / 7) * 12 + whiteScale[x % 7];
+    }
+    int b = NotesWhiteNum;
+    for(x = 0; x < NotesWhiteNum; ++x)
+    {
+        if(keyLayouts[x % (sizeof(keyLayouts) / sizeof(keyLayouts[0]))])
+        {
+            semitones[b++] = semitones[x] - 1;
+        }
+    }
+
+    // Base sample is D5 (semitone 14, originally C+1.ogg)
+    constexpr int baseSemitone = 14;
+    if(!baseClipLoaded)
+    {
+        baseClipRes = Resources::LoadAudioClip(notesDir + "base" + ext, false);
+        baseClipLoaded = true;
+    }
+    AudioClip *clip = Resources::GetAudioClipSource(baseClipRes);
+    if(clip == nullptr)
+    {
+        Debug::Log("Base audio clip not loaded: " + notesDir + "base" + ext);
+    }
+
     // init piano sources
     Vec2 offset_left {vector1.x - vector1.x * NotesWhiteNum / 2 - vector1.x * 0.05f * NotesWhiteNum / 2 + pianoOffset.x, pianoOffset.y};
     for(x = 0; x < sizeof(notes) / sizeof(notes[0]); ++x)
@@ -115,19 +156,17 @@ void PianoPlayer::OnAwake()
         // Add sprite and Transform layer
         notes[x].render = Primitive::CreateEmptyGameObject()->AddComponent<SpriteRenderer>();
         notes[x].render->transform()->localPosition(offset_left);
-        notes[x].render->transform()->layer(LAYER_NOTES);
+        SetDrawLayer(notes[x].render->transform(), LAYER_NOTES);
 
         offset_left += Vec2::right * vector1.x;
 
-        // load clips
-        ResId waveNote;
-        if(!(waveNote = notes_res[x]))
-        {
-            waveNote = notes_res[x] = Resources::LoadAudioClip(notesDir + notes[x].name + ext, false);
-        }
+        notes[x].startPlayTime = 0;
+        notes[x].close = false;
         notes[x].source = this->AddComponent<AudioSource>();
-        notes[x].source->setClip(Resources::GetAudioClipSource(waveNote));
+        notes[x].source->setClip(clip);
         notes[x].source->setVolume(1.0f);
+        float pitch = std::pow(2.0f, static_cast<float>(semitones[x] - baseSemitone) / 12.0f);
+        notes[x].source->setPitch(pitch);
         notes[x].noteName = Input::GetKeyName(notes[x].keys[0]);
     }
 
@@ -135,7 +174,7 @@ void PianoPlayer::OnAwake()
     for(x = 0; x < NotesBlackNum; ++x)
     {
         notes[x + NotesWhiteNum].render->setSprite(spriteBlack);
-        notes[x + NotesWhiteNum].render->transform()->layer(LAYER_NOTES + 1);
+        SetDrawLayer(notes[x + NotesWhiteNum].render->transform(), LAYER_NOTES + 1);
         notes[x + NotesWhiteNum].normal = spriteBlack;
         notes[x + NotesWhiteNum].hover = spriteBlackHover;
     }
@@ -167,7 +206,7 @@ void PianoPlayer::OnAwake()
     vector1.x += spriteVisualBackground->size().x / 2 - notes[0].render->getSize().x / 2 + 0.25f;
     vector1.y += spriteVisualBackground->size().y + notes[0].render->getSize().y - 0.1f;
 
-    visualObject->transform()->layer(LAYER_VISUALBACK);
+    SetDrawLayer(visualObject->transform(), LAYER_VISUALBACK);
     visualObject->transform()->position(vector1);
 
     hint = TitleApplication;
@@ -207,14 +246,14 @@ void PianoPlayer::OnAwake()
 
         p2->setSize(Vec2::one * 0.02f);
         p2->setColors(Color::yellow, Color::yellow, {Color::red, 0u});
-        p2->transform()->layer(LAYER_PARTICLES);
+        SetDrawLayer(p2->transform(), LAYER_PARTICLES);
 
         p2->transform()->position({notes[x].render->transform()->position().x, notes[0].render->transform()->position().y + notes[0].render->getSize().y});
 
         _particles.emplace_back(p1, p2);
 
         backNote = Primitive::CreateEmptyGameObject(Vec2 {p1->transform()->position().x, visualObject->transform()->position().y})->AddComponent<SpriteRenderer>();
-        backNote->transform()->layer(LAYER_BACKNOTE);
+        SetDrawLayer(backNote->transform(), LAYER_BACKNOTE);
         backNote->setSize({0.9f, 3.7});
         backNote->setColor({Color::black, 0});
 
@@ -429,6 +468,8 @@ void PianoPlayer::OnGizmos()
         return;
     }
 
+    drawBackgroundWave();
+
     if(mousetouched != -1)
     {
         RenderUtility::SetColor(Color::white);
@@ -457,6 +498,94 @@ void PianoPlayer::OnGizmos()
 
             RenderUtility::DrawTextClassic(p, notes[n].noteName);
         }
+    }
+}
+
+void PianoPlayer::drawBackgroundWave()
+{
+    static float waveAlpha = 0.0f;
+    static float wavePhase = 0.0f;
+
+    constexpr int kWavePoints = 128;
+    float mixedWave[kWavePoints] = {0.0f};
+    float tempWave[kWavePoints];
+    bool hasActiveSound = false;
+
+    for(int n = 0; n < AllNotes; ++n)
+    {
+        if(notes[n].source && notes[n].source->isPlaying())
+        {
+            if(notes[n].source->GetOutputData(tempWave, kWavePoints, 0))
+            {
+                hasActiveSound = true;
+                for(int i = 0; i < kWavePoints; ++i)
+                {
+                    mixedWave[i] += tempWave[i];
+                }
+            }
+        }
+    }
+
+    bool active = playing() || hasActiveSound;
+    if(active)
+    {
+        waveAlpha = std::min(1.0f, waveAlpha + Time::deltaTime() * 5.0f);
+        wavePhase += Time::deltaTime() * 4.0f;
+    }
+    else
+    {
+        waveAlpha = std::max(0.0f, waveAlpha - Time::deltaTime() * 3.0f);
+    }
+
+    if(waveAlpha <= 0.005f)
+        return;
+
+    // Center on the background layer above piano keys
+    float leftX = notes[0].render->transform()->position().x - 0.25f;
+    float rightX = notes[NotesWhiteNum - 1].render->transform()->position().x + 0.25f;
+    float centerY = _backDrawNotes.empty() ? 1.8f : _backDrawNotes[0]->transform()->position().y;
+    float width = rightX - leftX;
+
+    // Amplitude scale for the wave
+    float ampScale = 0.65f;
+
+    // Draw secondary soft glow line
+    Color glowColor(30, 160, 255, static_cast<std::uint8_t>(90 * waveAlpha));
+    Color mainColor(120, 240, 255, static_cast<std::uint8_t>(230 * waveAlpha));
+
+    auto getWavePoint = [&](int i, float phaseOffset, float ampMult) -> Vec2 {
+        float normX = static_cast<float>(i) / (kWavePoints - 1);
+        float x = leftX + normX * width;
+
+        // Window / taper function so the wave smoothly anchors to zero at the ends
+        float taper = 0.5f * (1.0f - std::cos(normX * 6.2831853f));
+
+        // Subtle ambient oscillation so the line lives even in quiet passages of playback
+        float ambient = 0.04f * std::sin(normX * 12.0f + wavePhase + phaseOffset);
+
+        float pcm = mixedWave[i] * ampScale * ampMult;
+        float y = centerY + (pcm + ambient) * taper;
+        return Vec2(x, y);
+    };
+
+    // Draw glow wave
+    RenderUtility::SetColor(glowColor);
+    Vec2 prevGlow = getWavePoint(0, 0.4f, 1.2f);
+    for(int i = 1; i < kWavePoints; ++i)
+    {
+        Vec2 currGlow = getWavePoint(i, 0.4f, 1.2f);
+        RenderUtility::DrawLine(prevGlow, currGlow);
+        prevGlow = currGlow;
+    }
+
+    // Draw primary crisp wave
+    RenderUtility::SetColor(mainColor);
+    Vec2 prevMain = getWavePoint(0, 0.0f, 1.0f);
+    for(int i = 1; i < kWavePoints; ++i)
+    {
+        Vec2 currMain = getWavePoint(i, 0.0f, 1.0f);
+        RenderUtility::DrawLine(prevMain, currMain);
+        prevMain = currMain;
     }
 }
 

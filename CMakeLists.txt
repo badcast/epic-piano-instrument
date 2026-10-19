@@ -5,7 +5,7 @@ project(PianoInstrument LANGUAGES CXX)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 
-option(USE_SYSRONIN "Use system installed ronin engine" ON)
+option(USE_SYSRONIN "Use system installed ronin engine" OFF)
 
 find_package(PkgConfig REQUIRED)
 
